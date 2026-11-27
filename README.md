@@ -2,11 +2,12 @@
 
 Simulação de Elementos Discretos (DEM) 2D que roda no navegador. Cada disco é um grão; em cada contato há uma mola normal, um atrito de Coulomb |Ft| ≤ μ·Fn e uma resistência ao rolamento |M| ≤ μr·R·Fn. No modo Interface, os grãos também são unidos por ligações adesivas que acumulam dano.
 
-## Os quatro ensaios
+## Os cinco ensaios
 
 | Ensaio | O que mostra | Ligação com o livro *Superfícies e interfaces de materiais na Engenharia Civil* |
 |---|---|---|
-| **Interface** | Duas camadas com faces ásperas unidas por um filme de ligante, cisalhadas sob tensão normal σ (como no ensaio de Leutner). Gera a curva τ × Δx com as zonas I, II e III, e mede kₜ, τ máx e τ residual. | Seção 1.3 (Lei de Goodman, Fig. 1.18) e Capítulo 4 (interface entre camadas); adesão × coesão e efeito da água (Cap. 1.2 e 2) |
+| **Seus ensaios (ANPET 2026)** | As 18 curvas τ × deslocamento horizontal do artigo "Desenvolvimento de um ensaio para análise da aderência de interface entre camadas" (Solo 1 A-4 e Solo 2 A-2-4; interfaces I1 solo-solo, I2 com ETS e I3 com EAI; σ = 50, 100 e 200 kPa), as envoltórias de ruptura e, ao lado, a simulação DEM calibrada para cada interface. | Capítulo 4 (aderência entre camadas) e Lei de Goodman |
+| **Interface** | Duas placas (lisas ou ásperas) unidas por um filme de espessura ajustável, cisalhadas sob tensão normal σ (como no ensaio de Leutner) ou tracionadas (arrancamento). Gera a curva τ × Δx com as zonas I, II e III, e mede kₜ, τ máx e τ residual. | Seção 1.3 (Lei de Goodman, Fig. 1.18) e Capítulo 4 (interface entre camadas); adesão × coesão e efeito da água (Cap. 1.2 e 2) |
 | **Efeito parede** | Grãos se acomodando sobre a superfície plana de um agregado e o perfil de porosidade em função da distância. | Capítulo 3 (ZTI, efeito parede, adições finas como a sílica ativa) |
 | **Cisalhamento** | Ângulo de atrito do conjunto (φ) gerado pelo atrito entre grãos (μ) e pela resistência ao rolamento. | Atrito e intertravamento em materiais granulares |
 | **Coluna** | Talude formado por uma coluna de grãos que desmorona. | Idem |
@@ -19,10 +20,30 @@ Simulação de Elementos Discretos (DEM) 2D que roda no navegador. Cada disco é
 - Cada ligação tem rigidez normal 600 e tangencial 300 e segue uma **lei bilinear de dano** (zona coesiva em miniatura): elástica até a resistência F, depois perde força linearmente até romper com 12 vezes o deslocamento do pico. O dano só reduz a força de tração e de cisalhamento.
 - **Água**: multiplica a adesão por (1 − 0,85·w) e a coesão por (1 − 0,25·w), onde w é a fração de água (0 a 1).
 - **Rugosidade**: altura das asperezas aleatórias das faces, em diâmetros de grão.
-- A placa de cima aplica σ constante e anda com velocidade 0,05 até Δx = 3 diâmetros.
-- **kₜ**: inclinação de τ × Δx até Δx = 0,08. **τ máx**: pico da curva suavizada. **τ residual**: média de Δx = 2,25 a 3. **Zona II**: do pico até τ chegar a 15% do excesso acima do residual.
+- **Espessura do filme**: de 1 a 6 camadas de grãos entre as placas. Com rugosidade 0 e 1–2 camadas, o ensaio representa **duas placas com um filme fino de adesivo** (junta adesiva).
+- **Tipo de carga**:
+  - *Cisalhamento (Leutner)*: a placa de cima aplica σ constante e anda para o lado com velocidade 0,05 até Δx = 3 diâmetros.
+  - *Tração (arrancamento)*: o filme se acomoda sob σ = 10, é descarregado para 0,2 e então a placa de cima é puxada para cima com velocidade 0,02 até Δy = 2 diâmetros. A tensão medida é a força vertical por largura. Não há Zona III de atrito: depois que as ligações rompem, a tensão vai a zero.
+- **kₜ** (ou **kₙ** na tração): inclinação inicial da curva, até 2,7% do deslocamento final. **τ máx**: pico da curva suavizada. **τ residual**: média do último quarto do deslocamento. **Zona II**: do pico até τ chegar a 15% do excesso acima do residual.
 - **Ruptura adesiva**: fração das ligações rompidas que eram de adesão (face) e não de coesão.
-- Rodando ensaios com σ diferentes, o gráfico da direita ajusta as envoltórias de pico e residual: τ = c + σ·tan φ.
+- Cisalhamento com σ diferentes: o gráfico da direita ajusta as envoltórias de pico e residual, τ = c + σ·tan φ. Tração com espessuras diferentes: o gráfico mostra σ máx × número de camadas.
+
+### Modo Seus ensaios (ANPET 2026) — calibração
+
+- Dados: planilha `ANPET_25-06-26.xlsx`, embutidos na página (deslocamento horizontal em mm, τ em kPa e, no Solo 1, deslocamento vertical).
+- Envoltória do ensaio: reta pelos τ máximos das 3 tensões (reproduz c e φ do artigo).
+- Escalas do modelo: σ_modelo = σ/10 kPa; τ (kPa) = 10·τ_modelo; 1 diâmetro de grão = 3 mm.
+- Resistência simulada: média do patamar entre 4,5 e 9 mm equivalentes (nos ensaios, o τ máximo ocorre nesse patamar).
+- Parâmetros encontrados por busca em grade, com média de 3 arranjos de grãos por tensão:
+
+| Interface | μ | μr | rugosidade | ligações | Simulação (c, φ) | Ensaio Solo 1 (c, φ) | Ensaio Solo 2 (c, φ) |
+|---|---|---|---|---|---|---|---|
+| I1 solo-solo | 0,6 | 0,2 | 1,0 | nenhuma | 16 kPa, 40,4° | 16 kPa, 41,8° | 19 kPa, 41,6° |
+| I2 ETS (filme lubrificante) | 0,3 | 0,2 | 1,5 | nenhuma | 2 kPa, 28,6° | −16 (≈0) kPa, 34,4° | 1 kPa, 28,0° |
+| I3 EAI, Solo 1 | 0,6 | 0,2 | 1,0 | F = 5, dúcteis (ruptura com 150× o deslocamento do pico) | 37 kPa, 31,7° | 43 kPa, 34,5° | — |
+| I3 EAI, Solo 2 | igual ao I1 | | | | 16 kPa, 40,4° | — | 21 kPa, 42,2° |
+
+- Limites: reproduz a envoltória, não a curva inteira (a simulação sobe mais rápido); cada ensaio simulado oscila cerca de ±15 kPa; a dilatância medida (deslocamento vertical) ainda não é comparada.
 
 ### Modo Efeito parede — modelo
 

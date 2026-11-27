@@ -24,8 +24,10 @@ nav.top{display:flex;gap:16px;flex-wrap:wrap;font-size:15px;margin-bottom:10px}
 nav.top a{color:var(--mute)}
 h1{font-size:clamp(28px,4vw,42px);line-height:1.05;letter-spacing:-.02em;margin:0 0 6px;text-wrap:balance}
 .sub{color:var(--mute);margin:0 0 14px;max-width:80ch}
-.modes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--rule);border-radius:12px;overflow:hidden;margin-bottom:14px;background:var(--panel)}
-@media(max-width:640px){.modes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.modes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--rule);border-radius:12px;overflow:hidden;margin-bottom:14px;background:var(--panel)}
+@media(max-width:900px){.modes{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:560px){.modes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.apar{background:var(--bg);border:1px solid var(--rule);border-radius:10px;padding:8px 10px;font-size:14px;margin-top:8px}.apar b{font-variant-numeric:tabular-nums}
 .modes button{font:inherit;border:0;background:none;color:var(--ink);padding:10px 12px;text-align:left;cursor:pointer;min-height:56px;border-right:1px solid var(--rule)}
 .modes button b{display:block;font-size:16px}
 .modes button span{font-size:13px;color:var(--mute)}
@@ -41,6 +43,7 @@ h1{font-size:clamp(28px,4vw,42px);line-height:1.05;letter-spacing:-.02em;margin:
 .dial b{display:block;font-size:clamp(22px,3vw,30px);line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
 .dial span{font-size:13px;color:var(--mute)}
 .dial:first-child b{color:var(--acc)}
+.dials.small b{font-size:clamp(17px,2.1vw,22px)}
 .panel{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:14px}
 .panel h2{font-size:18px;margin:0 0 8px}
 .ctl{margin:10px 0}
@@ -75,6 +78,7 @@ th:first-child,td:first-child{text-align:left}
 <p class="sub">Simulação de Elementos Discretos (DEM) no seu navegador. Cada disco é um grão; em cada contato há uma mola normal, um atrito de Coulomb |F<sub>t</sub>| ≤ μ·F<sub>n</sub> e, no modo Interface, ligações adesivas que acumulam dano. Escolha o ensaio:</p>
 
 <div class="modes" role="group" aria-label="Ensaio">
+ <button data-m="anpet" aria-pressed="false"><b>Seus ensaios</b><span>ANPET 2026: I1, I2 e I3 calibrados</span></button>
  <button data-m="int" aria-pressed="true"><b>Interface</b><span>aderência entre camadas (Leutner)</span></button>
  <button data-m="wall" aria-pressed="false"><b>Efeito parede</b><span>porosidade junto ao agregado (ZTI)</span></button>
  <button data-m="shear" aria-pressed="false"><b>Cisalhamento</b><span>φ do solo a partir do atrito entre grãos</span></button>
@@ -84,7 +88,7 @@ th:first-child,td:first-child{text-align:left}
 <div class="lab">
  <section>
   <div class="bench"><canvas id="cv" width="900" height="520" aria-label="Simulação dos grãos"></canvas><div class="badge" id="fase">Carregando…</div></div>
-  <div class="dials">
+  <div class="dials" id="dials">
    <div class="dial"><b id="d1">—</b><span id="l1"></span></div>
    <div class="dial"><b id="d2">—</b><span id="l2"></span></div>
    <div class="dial"><b id="d3">—</b><span id="l3"></span></div>
@@ -96,6 +100,13 @@ th:first-child,td:first-child{text-align:left}
   <div class="ctl" data-for="int"><label for="adh"><span>Adesão ligante–agregado</span> <output id="oadh"></output></label><input type="range" id="adh" min="0" max="60" step="1" value="25"><small>Resistência das ligações entre o filme e as faces das camadas.</small></div>
   <div class="ctl" data-for="int"><label for="coh"><span>Coesão dentro do ligante</span> <output id="ocoh"></output></label><input type="range" id="coh" min="0" max="60" step="1" value="30"><small>Resistência das ligações entre os grãos do próprio filme.</small></div>
   <div class="ctl" data-for="int"><label for="agua"><span>Água na interface</span> <output id="oagua"></output></label><input type="range" id="agua" min="0" max="100" step="5" value="0"><small>Enfraquece muito a adesão e pouco a coesão.</small></div>
+  <div class="ctl" data-for="anpet"><label for="asolo">Solo</label><select id="asolo"><option value="S1">Solo 1 — A-4, Proctor Normal</option><option value="S2">Solo 2 — A-2-4, Proctor Intermediária</option></select></div>
+  <div class="ctl" data-for="anpet"><label for="aint">Interface</label><select id="aint"><option value="I1">I1 — solo-solo</option><option value="I2">I2 — solo + emulsão ETS (RC1C-E) + solo</option><option value="I3">I3 — solo + emulsão de imprimação EAI + solo</option></select></div>
+  <div class="ctl" data-for="anpet"><label for="asig">Tensão normal</label><select id="asig"><option value="50">50 kPa</option><option value="100" selected>100 kPa</option><option value="200">200 kPa</option></select></div>
+  <div class="btns" data-for="anpet" style="margin-top:4px"><button class="btn" id="arun3">Simular as 3 tensões</button></div>
+  <div class="apar" data-for="anpet" id="apar"></div>
+  <div class="ctl" data-for="int"><label for="carga">Tipo de carga</label><select id="carga"><option value="cis">Cisalhamento (Leutner)</option><option value="tra">Tração (arrancamento)</option></select><small>No cisalhamento a placa de cima anda para o lado sob σ; na tração ela é puxada para cima.</small></div>
+  <div class="ctl" data-for="int"><label for="esp"><span>Espessura do filme</span> <output id="oesp"></output></label><input type="range" id="esp" min="1" max="6" step="1" value="4"><small>Número de camadas de grãos entre as placas.</small></div>
   <div class="ctl" data-for="int"><label for="rug"><span>Rugosidade das faces</span> <output id="orug"></output></label><input type="range" id="rug" min="0" max="1.5" step="0.1" value="0.5"><small>Altura das asperezas das superfícies, em diâmetros de grão.</small></div>
   <div class="ctl" data-for="int shear"><label for="sig"><span>Tensão normal σ</span> <output id="osig"></output></label><input type="range" id="sig" min="0" max="40" step="1" value="10"><small>Compressão aplicada pela placa de cima.</small></div>
   <div class="ctl" data-for="wall"><label for="faixa"><span>Faixa de tamanhos (d<sub>máx</sub>/d<sub>mín</sub>)</span> <output id="ofaixa"></output></label><input type="range" id="faixa" min="1" max="3" step="0.1" value="1.5"><small>1 = grãos iguais; 3 = cimento bem graduado.</small></div>
@@ -105,7 +116,7 @@ th:first-child,td:first-child{text-align:left}
   <div class="ctl" data-for="shear"><label for="iin">Velocidade do ensaio</label><select id="iin"><option value="0.005">Lenta, quase-estática (I = 0,005)</option><option value="0.03">Média (I = 0,03)</option><option value="0.15">Rápida, dinâmica (I = 0,15)</option></select></div>
   <div class="ctl"><label for="spd"><span>Velocidade da animação</span> <output id="ospd">60</output></label><input type="range" id="spd" min="10" max="300" step="10" value="60"></div>
   <div class="ctl" data-for="shear col"><label for="cor">Cor dos grãos</label><select id="cor"><option value="v">Velocidade</option><option value="f">Faixas (mostra a deformação)</option><option value="w">Rotação</option></select></div>
-  <label class="chk"><input type="checkbox" id="fch" checked> <span id="lfch">Mostrar cadeias de força</span></label>
+  <input type="hidden" id="seed" value="0"><input type="hidden" id="duct" value="12"><label class="chk"><input type="checkbox" id="fch" checked> <span id="lfch">Mostrar cadeias de força</span></label>
   <div class="btns"><button class="btn go" id="play">Pausar</button><button class="btn" id="reset">Reiniciar</button></div>
   <p class="note">Mudar um parâmetro reinicia o ensaio. Cada ensaio completo entra no diário.</p>
  </aside>
@@ -117,7 +128,7 @@ th:first-child,td:first-child{text-align:left}
 </div>
 
 <section class="panel" style="margin-top:16px">
- <h2>Diário de ensaios</h2>
+ <h2 id="logt">Diário de ensaios</h2>
  <div class="scroll"><table><thead id="loghead"></thead><tbody id="log"></tbody></table></div>
 </section>
 
@@ -131,30 +142,40 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 const REF=[[0,0,.054],[.1,0,.149],[.2,0,.201],[.3,0,.2],[.5,0,.226],[.8,0,.254],[1,0,.272],[0,.3,.054],[.1,.3,.151],[.2,.3,.248],[.3,.3,.32],[.5,.3,.311],[.8,.3,.365],[1,.3,.399]];
 const KN=2000,KT=1000,E=.3,ZETA=-Math.log(E)/Math.sqrt(Math.PI**2+Math.log(E)**2);
 const KBN=600,KBT=300,SOFT=12;          // ligação: rigidez normal e tangencial; δ_ruptura = SOFT·δ_início
-const DXMAX=3, GMAX=2;                    // deslocamento final no modo Interface; deformação final no cisalhamento
+const GMAX=2;                             // deformação final no cisalhamento
+const DX=()=>S&&S.p.carga==='tra'?2:3;  // deslocamento final no modo Interface (tração ou cisalhamento)
 let S=null,running=true,mode='int',rng;
-const LOG={int:[],wall:[],shear:[],col:[]};
+// ===== ensaios ANPET 2026 (planilha ANPET_25-06-26): [deslocamento horizontal mm, τ kPa, deslocamento vertical mm]
+const EXP={"S1":{"I1":{"50":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,6.89,28.77,47.2,57.61,63.84,63.6,62.83,62.27,62.02,62.07,62.04,61.92,62.11,62.31,62.42,62.57,62.77,63.26,63.42,64.15,64.89,65.3,65.86,66.19,66.71,66.7,66.94,66.84,66.98,66.77],[0,0.0333,0.0619,0.073,0.0746,0.0508,0.0175,0.0032,-0.027,-0.054,-0.0619,-0.0714,-0.0904,-0.0968,-0.1031,-0.1111,-0.1222,-0.1301,-0.1365,-0.1507,-0.1571,-0.1587,-0.1634,-0.1682,-0.1619,-0.1872,-0.1983,-0.2015,-0.2047,-0.211,-0.2174]],"100":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,7.92,8.13,12.58,34.41,44.54,48.72,56.96,64.98,67.63,74.44,78.08,81.58,84.84,85.29,84.97,87.19,91.34,91.99,92.82,93.58,93.15,95.3,96.41,96.62,94.74,90.15,86.68,86.19,85.75,86.21],[0,0.0206,0.0365,0.1523,0.338,0.4665,0.5316,0.6252,0.7093,0.7506,0.7839,0.8299,0.8648,0.8902,0.9108,0.9203,0.9505,0.9568,0.9695,0.9806,0.9806,0.9822,0.987,0.9886,0.9886,0.9886,0.9917,0.9965,0.9981,0.9997,1.0013]],"200":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,4.45,19.96,38.73,44.84,47.69,61.5,73.51,85.56,94.83,103.48,108.99,118.4,127.14,135.01,141.49,147.08,152.81,157.39,161.8,165.44,168.84,172.32,176.08,179.55,182.82,185.97,189.75,192.79,195.51,198.26],[0,0.0079,0.0587,0.1841,0.2285,0.2507,0.311,0.3808,0.4665,0.5141,0.5776,0.6141,0.6569,0.7061,0.7347,0.7601,0.7839,0.8156,0.8299,0.8521,0.8743,0.895,0.9156,0.9283,0.9394,0.9584,0.9632,0.9791,0.9886,0.9981,1.0092]]},"I2":{"50":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,5.78,8.34,12.62,15.34,17.51,18.83,19.81,20.49,21.18,21.47,22.03,22.29,22.59,22.89,22.74,22.91,22.8,22.55,22.63,22.61,22.69,22.58,22.76,22.69,22.72,22.51,21.56,21.54,21.86,22.09],[0,0.0428,0.0984,0.1444,0.1984,0.2412,0.2634,0.2793,0.2904,0.2983,0.3031,0.3126,0.3158,0.3189,0.3237,0.3253,0.3285,0.3285,0.3348,0.3332,0.3348,0.3316,0.3332,0.3348,0.3348,0.3348,0.3348,0.3348,0.3348,0.338,0.3332]],"100":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,2.7,12.99,16.51,18.46,18.52,20.19,24.31,26.21,27.78,28.91,29.78,30.98,31.74,33.1,33.97,35.03,35.83,36.45,37.59,38.37,39.15,40.71,41.09,41.37,42.19,42.19,43.17,43.67,44.27,45.08],[0,0.0301,0.1031,0.1714,0.1809,0.1857,0.1952,0.219,0.2586,0.2713,0.284,0.3047,0.3237,0.3332,0.3459,0.3586,0.3666,0.3729,0.3824,0.3872,0.3951,0.4046,0.411,0.4173,0.4221,0.4268,0.43,0.4284,0.43,0.4364,0.4395]],"200":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,13.22,14.71,28.18,45.79,56.77,64.61,71.52,78.24,84.13,89.23,94.12,98.15,101.18,104.25,107.25,108.85,110.47,112.34,113.57,115.05,116.79,118.16,118.88,120.23,120.63,121.42,121.19,121.89,122.75,123.37],[0,0.0032,0.0571,0.1507,0.2602,0.3364,0.3888,0.4395,0.4792,0.5157,0.5427,0.5728,0.6062,0.6284,0.6427,0.6506,0.6601,0.668,0.6871,0.703,0.7077,0.7172,0.7204,0.7252,0.7299,0.7379,0.7394,0.7458,0.7506,0.7569,0.7601]]},"I3":{"50":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,11.85,11.4,18.2,23.46,25.59,27.92,31.72,35.08,39.59,43.2,46.27,48.87,51.05,53.06,54.68,56.0,57.42,58.48,59.89,61.12,62.18,63.29,64.37,65.22,65.98,66.65,67.48,68.07,68.77,69.08],[0,0.0666,0.1158,0.1983,0.2523,0.2967,0.3364,0.3713,0.4205,0.4459,0.4729,0.5062,0.53,0.5459,0.5649,0.5681,0.5744,0.5824,0.5855,0.5903,0.5982,0.6077,0.6109,0.6236,0.6252,0.6268,0.6284,0.63,0.6331,0.6347,0.6347]],"100":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,20.84,52.25,65.19,73.51,80.35,85.99,90.98,95.98,100.27,103.22,106.11,109.07,111.47,113.36,115.17,116.03,116.47,117.2,118.51,119.55,120.79,121.85,121.86,122.51,123.3,122.49,123.01,123.72,123.95,124.93],[0,0.0079,0.1476,0.2158,0.2745,0.3189,0.3618,0.3904,0.4237,0.4459,0.4665,0.4983,0.503,0.5062,0.5141,0.5205,0.5205,0.5189,0.5221,0.5236,0.5236,0.5252,0.5268,0.5284,0.53,0.5316,0.5316,0.5316,0.5316,0.53,0.53]],"200":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,2.01,22.45,32.03,46.57,61.75,73.79,85.64,96.69,106.6,114.51,123.05,129.77,136.29,141.51,146.24,150.41,154.16,157.82,160.85,162.79,164.18,165.19,167.04,168.09,169.63,171.24,171.98,173.13,174.89,176.42],[0,0.0286,0.1095,0.1904,0.2063,0.2698,0.3364,0.3681,0.4015,0.4348,0.4745,0.503,0.5332,0.557,0.5839,0.6125,0.63,0.6442,0.6538,0.6617,0.6744,0.6871,0.6918,0.6966,0.6998,0.7014,0.703,0.7061,0.7077,0.7125,0.7204]]}},"S2":{"I1":{"50":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,15.66,24.39,38.43,46.31,50.48,52.59,53.78,54.42,54.7,54.99,55.55,56.03,56.38,56.91,57.17,57.66,57.93,58.16,58.39,58.62,59.13,59.32,59.7,60.05,60.29,60.39,60.59,60.65,61.0,61.11],null],"100":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,4.71,30.28,41.84,49.96,57.86,66.15,72.93,78.06,82.75,86.54,89.66,92.22,94.94,97.06,98.5,99.73,100.98,102.42,103.69,105.21,106.61,107.74,108.63,109.15,109.24,110.06,110.11,110.4,110.95,111.65],null],"200":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,4.75,11.31,46.77,67.43,80.31,91.12,104.48,115.72,124.7,134.5,143.23,149.29,155.78,160.97,165.61,169.57,173.29,176.58,179.25,181.9,183.87,186.0,187.48,189.66,190.94,192.09,193.2,193.88,194.66,195.56],null]},"I2":{"50":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,7.4,7.01,7.05,7.04,7.07,7.07,7.06,7.1,7.45,7.75,8.02,8.2,8.42,8.93,9.25,9.72,10.14,10.57,11.29,11.54,12.32,12.49,12.94,13.4,13.77,14.34,14.52,15.0,15.64,16.08],null],"100":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,14.85,25.72,31.56,34.8,36.9,39.42,41.61,44.57,46.9,48.85,51.0,53.36,54.92,56.36,58.0,59.47,60.86,61.43,62.62,63.96,64.7,65.88,66.3,67.35,68.12,68.51,68.57,68.92,69.57,70.33],null],"200":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,21.05,20.51,37.61,45.53,52.14,57.59,62.56,66.71,69.82,73.37,76.69,79.45,81.65,84.38,86.4,87.66,87.67,88.57,89.67,90.74,92.34,93.72,94.58,95.12,96.25,98.07,99.48,100.06,100.54,101.23],null]},"I3":{"50":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,2.95,17.59,27.49,35.1,41.53,45.74,49.11,51.49,52.7,53.47,53.8,55.03,55.92,56.81,57.54,58.17,58.63,59.23,59.8,60.08,60.04,60.13,60.33,60.63,61.12,61.22,61.23,61.54,61.75,62.16],null],"100":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,6.2,17.98,28.96,35.24,40.44,47.14,54.84,61.34,67.81,73.32,78.71,82.84,87.39,91.43,94.59,97.14,99.91,101.16,103.08,104.36,106.18,107.78,109.06,110.61,111.97,113.54,115.03,116.0,116.68,117.51],null],"200":[[0,0.301,0.6,0.901,1.201,1.5,1.801,2.101,2.401,2.701,3.0,3.301,3.601,3.9,4.201,4.5,4.801,5.101,5.4,5.701,6.001,6.302,6.601,6.9,7.201,7.501,7.8,8.101,8.4,8.701,9.001],[0,8.94,36.13,63.2,79.81,92.8,102.54,112.02,121.04,129.61,137.77,144.99,151.38,156.78,161.66,166.17,171.1,175.01,178.82,181.41,184.12,186.11,188.15,189.31,191.31,193.18,195.02,197.28,199.42,200.04,200.06],null]}}};
+// parâmetros calibrados do DEM (busca em grade, média de 3 arranjos de grãos) e resultado de referência da simulação (kPa)
+const CAL={I1:{mu:.6,mur:.2,rug:1,adh:0,coh:0,duct:12},I2:{mu:.3,mur:.2,rug:1.5,adh:0,coh:0,duct:12},I3S1:{mu:.6,mur:.2,rug:1,adh:5,coh:5,duct:150},I3S2:{mu:.6,mur:.2,rug:1,adh:0,coh:0,duct:12}};
+const CALREF={I1:[59,99,186],I2:[31,54,112],I3S1:[67,99,160],I3S2:[59,99,186]};
+const KPA=10,MM=3;   // 1 unidade de tensão do modelo = 10 kPa; 1 diâmetro de grão = 3 mm
+const calKey=()=>{const i=$('aint').value;return i==='I3'?'I3'+$('asolo').value:i};
+const AP=()=>({...P(),...CAL[calKey()],sig:+$('asig').value/KPA,carga:'cis',agua:0,esp:4});
+let AQ=[];
+const LOG={int:[],wall:[],shear:[],col:[],anpet:[]};
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-const P=()=>({mu:+$('mu').value,mur:+$('mur').value,sig:+$('sig').value,I:+$('iin').value,adh:+$('adh').value,coh:+$('coh').value,agua:+$('agua').value/100,rug:+$('rug').value,faixa:+$('faixa').value,finos:+$('finos').value/100});
+const P=()=>({mu:+$('mu').value,mur:+$('mur').value,sig:+$('sig').value,I:+$('iin').value,adh:+$('adh').value,coh:+$('coh').value,agua:+$('agua').value/100,rug:+$('rug').value,faixa:+$('faixa').value,finos:+$('finos').value/100,esp:+$('esp').value,carga:$('carga').value});
 
 // ================================================================ montagem dos ensaios
 function build(){
- rng=mulberry(7);const p=P();const g=[];// [x,y,r,tipo,lado]  tipo 0 livre, 1 fixo, 2 placa; lado: 0 filme, 1 face de baixo, 2 face de cima, 3 enfeite
+ rng=mulberry(7+(+$('seed').value||0)*101);const p=mode==='anpet'?AP():P();const gm=mode==='anpet'?'int':mode;const g=[];// [x,y,r,tipo,lado]  tipo 0 livre, 1 fixo, 2 placa; lado: 0 filme, 1 face de baixo, 2 face de cima, 3 enfeite
  let Lx=null,W=0,H=0,grav=0,floor=false,gate=null;
- if(mode==='shear'){Lx=24;const nx=Math.floor(Lx/1.1),nl=16;
+ if(gm==='shear'){Lx=24;const nx=Math.floor(Lx/1.1),nl=16;
   for(let x=.25;x<Lx;x+=.5)g.push([x,0,.25,1,1]);
   let top=0;for(let j=0;j<nl;j++)for(let i=0;i<nx;i++){const y=1+j*1.15;top=Math.max(top,y);g.push([(i+.5)*Lx/nx+(rng()-.5)*.1,y,.4+rng()*.2,0,0])}
   for(let x=.25;x<Lx;x+=.5)g.push([x,top+1,.25,2,2]);W=Lx;H=top+2.5;
- }else if(mode==='col'){W=60;grav=1;gate=14.1;for(let x=.3;x<W;x+=.6)g.push([x,.3,.3,1,1]);
+ }else if(gm==='col'){W=60;grav=1;gate=14.1;for(let x=.3;x<W;x+=.6)g.push([x,.3,.3,1,1]);
   for(let j=0;j<28;j++)for(let i=0;i<14;i++)g.push([i+.6+(rng()-.5)*.1,j*1.05+1.3,.4+rng()*.2,0,0]);H=32;
- }else if(mode==='int'){Lx=24;const A=p.rug,hh=Array.from({length:24},()=>A*(2*rng()-1)),prof=x=>{const i=((Math.floor(x)%24)+24)%24,f=x-Math.floor(x),j=(i+1)%24;return hh[i]*(1-f)+hh[j]*f};// asperezas aleatórias
+ }else if(gm==='int'){Lx=24;const A=p.rug,hh=Array.from({length:24},()=>A*(2*rng()-1)),prof=x=>{const i=((Math.floor(x)%24)+24)%24,f=x-Math.floor(x),j=(i+1)%24;return hh[i]*(1-f)+hh[j]*f};// asperezas aleatórias
   // camada de baixo (fixa): face ondulada + duas fileiras de enfeite
   for(let x=.5;x<Lx;x+=1){const y=2.5+prof(x);g.push([x,y,.5,1,1]);g.push([x,y-1,.5,1,3]);g.push([x,y-2,.5,1,3])}
   // filme de ligante: 4 camadas de grãos livres que acompanham a ondulação da face
-  for(let j=0;j<4;j++)for(let i=0;i<24;i++){const x=(i+.5)*Lx/24+(rng()-.5)*.06;g.push([x,3.5+j*1.0+prof(x),.45+rng()*.1,0,0])}
+  for(let j=0;j<p.esp;j++)for(let i=0;i<24;i++){const x=(i+.5)*Lx/24+(rng()-.5)*.06;g.push([x,3.5+j*1.0+prof(x),.45+rng()*.1,0,0])}
   // camada de cima (placa): face com a mesma ondulação, encostada no filme + enfeite
-  const yt=7.52;for(let x=.5;x<Lx;x+=1){const y=yt+prof(x);g.push([x,y,.5,2,2]);g.push([x,y+1,.5,2,3]);g.push([x,y+2,.5,2,3])}
-  W=Lx;H=yt+A+2.8;
+  const yt=3.52+p.esp;for(let x=.5;x<Lx;x+=1){const y=yt+prof(x);g.push([x,y,.5,2,2]);g.push([x,y+1,.5,2,3]);g.push([x,y+2,.5,2,3])}
+  W=Lx;H=yt+A+2.8+(p.carga==='tra'?2:0);
  }else{ // efeito parede: grãos caem sobre a superfície plana de um agregado
   Lx=30;grav=1;floor=true;const dm=2/(1+p.faixa),rmin=dm/2,rmaxg=p.faixa*dm/2;// diâmetro médio = 1
   const areaAlvo=Lx*22*.8;let aF=p.finos*areaAlvo,aG=areaAlvo-aF;const list=[];
@@ -165,12 +186,12 @@ function build(){
   const cell=2*Math.max(rmaxg,.2)+.05,nc=Math.floor(Lx/cell);list.forEach((r,k)=>{const i=k%nc,j=Math.floor(k/nc);g.push([(i+.5)*Lx/nc+(rng()-.5)*.1,1+j*cell+rng()*.1,r,0,0])});
   W=Lx;H=24;
  }
- const N=g.length,s={N,Lx,W,H,mode,p,t:0,step:0,ph:0,grav,floor,gate,x:new Float64Array(N),y:new Float64Array(N),vx:new Float64Array(N),vy:new Float64Array(N),w:new Float64Array(N),r:new Float64Array(N),m:new Float64Array(N),I:new Float64Array(N),ty:new Uint8Array(N),side:new Uint8Array(N),x0:new Float64Array(N),y0:new Float64Array(N),fx:new Float64Array(N),fy:new Float64Array(N),tq:new Float64Array(N),hist:new Map(),C:[],V:0,vyp:0,P:0,Fp:[0,0],rec:[],B:[],nb0:0,brokeA:0,brokeC:0};
+ const N=g.length,s={N,Lx,W,H,mode:gm,p,t:0,step:0,ph:0,grav,floor,gate,x:new Float64Array(N),y:new Float64Array(N),vx:new Float64Array(N),vy:new Float64Array(N),w:new Float64Array(N),r:new Float64Array(N),m:new Float64Array(N),I:new Float64Array(N),ty:new Uint8Array(N),side:new Uint8Array(N),x0:new Float64Array(N),y0:new Float64Array(N),fx:new Float64Array(N),fy:new Float64Array(N),tq:new Float64Array(N),hist:new Map(),C:[],V:0,vyp:0,P:0,Fp:[0,0],rec:[],B:[],nb0:0,brokeA:0,brokeC:0};
  let mmin=1e9,rmax=0;g.forEach(([x,y,r,t,sd],i)=>{s.x[i]=s.x0[i]=x;s.y[i]=s.y0[i]=y;s.r[i]=r;s.m[i]=Math.PI*r*r;s.I[i]=.5*s.m[i]*r*r;s.ty[i]=t;s.side[i]=sd;if(!t)mmin=Math.min(mmin,s.m[i]);rmax=Math.max(rmax,r)});
- s.rmax=rmax;s.dt=.1*Math.sqrt(mmin/KN);if(mode==='shear'||mode==='int')s.P=p.sig*Lx;
+ s.duct=p.duct||+$('duct').value||SOFT;s.rmax=rmax;s.dt=.1*Math.sqrt(mmin/KN);if(gm==='shear'||gm==='int')s.P=(gm==='int'&&p.carga==='tra'?10:p.sig)*Lx;
  S=s;fase();setDials();
 }
-function fase(){const s=S;const F={shear:['Adensando: a placa desce sob σ','Cisalhando: a placa anda para a direita','Ensaio completo'],col:['Assentando atrás da comporta','Comporta aberta: a coluna desmorona','Pilha em repouso'],int:['Acomodando o filme sob σ','Cisalhando a interface (ligações ativas)','Ensaio completo'],wall:['Grãos caindo sobre o agregado','Acomodando','Empacotamento em repouso']};$('fase').textContent=F[s.mode][s.ph]}
+function fase(){const s=S;const F={shear:['Adensando: a placa desce sob σ','Cisalhando: a placa anda para a direita','Ensaio completo'],col:['Assentando atrás da comporta','Comporta aberta: a coluna desmorona','Pilha em repouso'],int:['Acomodando o filme','Carregando a interface (ligações ativas)','Ensaio completo'],wall:['Grãos caindo sobre o agregado','Acomodando','Empacotamento em repouso']};$('fase').textContent=F[s.mode][s.ph]}
 
 // ================================================================ física
 function step(){
@@ -212,7 +233,7 @@ function step(){
    let dx=x[j]-x[i];if(per)dx-=s.Lx*Math.round(dx/s.Lx);const dy=y[j]-y[i],d=Math.hypot(dx,dy),nxv=dx/d,nyv=dy/d,tx=-nyv,tyv=nxv;
    const un=d-b.d0,vt=(vx[i]-vx[j])*tx+(vy[i]-vy[j])*tyv+w[i]*r[i]+w[j]*r[j];b.us+=vt*dt;
    const de=Math.hypot(Math.max(un,0),b.us);if(de>b.dm)b.dm=de;
-   const d0=b.F/KBN,df=SOFT*d0;let D=b.dm<=d0?0:Math.min(1,df*(b.dm-d0)/(b.dm*(df-d0)));
+   const d0=b.F/KBN,df=S.duct*d0;let D=b.dm<=d0?0:Math.min(1,df*(b.dm-d0)/(b.dm*(df-d0)));
    if(D>=1||b.F<=0){if(b.a)s.brokeA++;else s.brokeC++;continue}
    b.D=D;const fn=KBN*un*(1-(un>0?D:0)),ft=-KBT*b.us*(1-D);
    const Fx=fn*nxv+ft*tx,Fy=fn*nyv+ft*tyv;fx[i]+=Fx;fy[i]+=Fy;fx[j]-=Fx;fy[j]-=Fy;tq[i]+=r[i]*ft;tq[j]+=r[j]*ft;
@@ -221,7 +242,7 @@ function step(){
  let Fpx=0,Fpy=0,Mp=0,np=0;
  for(let i=0;i<N;i++){if(ty[i]===2){Fpx+=fx[i];Fpy+=fy[i];Mp+=m[i];np++;continue}if(ty[i]===1)continue;
   vx[i]+=fx[i]/m[i]*dt;vy[i]+=(fy[i]/m[i]-s.grav)*dt;w[i]+=tq[i]/s.I[i]*dt;x[i]+=vx[i]*dt;y[i]+=vy[i]*dt}
- if(np){s.Fp=[Fpx,Fpy];const am=2*Math.sqrt(Mp*KN*np);s.vyp+=(Fpy-s.P-am*s.vyp)/Mp*dt;
+ if(np){s.Fp=[Fpx,Fpy];const am=2*Math.sqrt(Mp*KN*np);if(s.Vy!=null)s.vyp=s.Vy;else s.vyp+=(Fpy-s.P-am*s.vyp)/Mp*dt;
   for(let i=0;i<N;i++)if(ty[i]===2){vx[i]=s.V;vy[i]=s.vyp;w[i]=0;x[i]+=s.V*dt;y[i]+=s.vyp*dt}}
  s.t+=dt;s.step++;
 }
@@ -247,9 +268,13 @@ function control(){
   if(s.ph===0&&s.t>15){s.gate=null;s.ph=1;fase()}
   if(s.ph===1&&s.step%400===0&&s.t>30&&ek()<2e-4){s.ph=2;fase();LOG.col.push({mu:s.p.mu,mur:s.p.mur,ang:angle()});refresh()}
  }else if(s.mode==='int'){
-  if(s.ph===0&&s.t>6){makeBonds();s.ph=1;s.V=.05;s.t0=s.t;s.x0.set(s.x);fase()}
-  if(s.ph===1&&s.step%30===0){const dx=s.V*(s.t-s.t0),tau=-s.Fp[0]/s.Lx;s.rec.push([dx,tau]);
-   if(dx>=DXMAX){s.ph=2;fase();const a=analyzeInt();LOG.int.push({...a,adh:s.p.adh,coh:s.p.coh,agua:s.p.agua,rug:s.p.rug,sig:s.p.sig,mu:s.p.mu});refresh()}}
+  if(s.ph===0&&s.p.carga==='tra'&&s.t>6&&s.P>0.2*s.Lx)s.P=.2*s.Lx;// descarrega antes de colar
+  if(s.ph===0&&s.t>(s.p.carga==='tra'?8:6)){makeBonds();s.ph=1;if(s.p.carga==='tra'){s.V=0;s.Vy=.02}else s.V=.05;s.t0=s.t;s.x0.set(s.x);fase()}
+  if(s.ph===1&&s.step%30===0){const tra=s.p.carga==='tra',dx=(tra?s.Vy:s.V)*(s.t-s.t0),tau=(tra?-s.Fp[1]:-s.Fp[0])/s.Lx;s.rec.push([dx,tau]);
+   if(dx>=DX()&&mode==='anpet'){s.ph=2;fase();const pl=s.rec.filter(q=>q[0]>=1.5),pt=pl.reduce((t,q)=>t+q[1],0)/pl.length*KPA;
+    LOG.anpet.push({solo:$('asolo').value,int:$('aint').value,sig:+$('asig').value,tau:pt,curve:s.rec.map(q=>[q[0]*MM,q[1]*KPA])});
+    if(AQ.length){const nx=AQ.shift();setTimeout(()=>{$('asig').value=nx;restart()},400)}refresh();return}
+   if(dx>=DX()){s.ph=2;fase();const a=analyzeInt();LOG.int.push({...a,adh:s.p.adh,coh:s.p.coh,agua:s.p.agua,rug:s.p.rug,sig:s.p.sig,mu:s.p.mu,esp:s.p.esp,carga:s.p.carga});refresh()}}
  }else{
   if(s.ph===0&&s.t>8)s.ph=1,fase();
   if(s.ph===1&&s.step%300===0&&s.t>14&&ek()<3e-5){s.ph=2;fase();const pr=profile();LOG.wall.push({faixa:s.p.faixa,finos:s.p.finos,mu:s.p.mu,...pr.sum});refresh()}
@@ -258,8 +283,8 @@ function control(){
 function smooth(R,k){const o=[];let a=0;R.forEach((q,i)=>{a=i?a*(1-k)+q[1]*k:q[1];o.push([q[0],a])});return o}
 function analyzeInt(){const R=S.rec;if(R.length<5)return{};const sm=smooth(R,.25);
  let im=0;sm.forEach((q,i)=>{if(q[1]>sm[im][1])im=i});const tmax=sm[im][1],xpk=sm[im][0];
- const fitPts=R.filter(q=>q[0]<=.08);let kt=null;if(fitPts.length>=2){const n=fitPts.length,sx=fitPts.reduce((a,q)=>a+q[0],0),sy=fitPts.reduce((a,q)=>a+q[1],0),sxx=fitPts.reduce((a,q)=>a+q[0]**2,0),sxy=fitPts.reduce((a,q)=>a+q[0]*q[1],0);kt=(n*sxy-sx*sy)/(n*sxx-sx*sx)}
- const tail=R.filter(q=>q[0]>=.75*DXMAX);const tres=tail.length?tail.reduce((a,q)=>a+q[1],0)/tail.length:null;
+ const fitPts=R.filter(q=>q[0]<=.027*DX());let kt=null;if(fitPts.length>=2){const n=fitPts.length,sx=fitPts.reduce((a,q)=>a+q[0],0),sy=fitPts.reduce((a,q)=>a+q[1],0),sxx=fitPts.reduce((a,q)=>a+q[0]**2,0),sxy=fitPts.reduce((a,q)=>a+q[0]*q[1],0);kt=(n*sxy-sx*sy)/(n*sxx-sx*sx)}
+ const tail=R.filter(q=>q[0]>=.75*DX());const tres=tail.length?tail.reduce((a,q)=>a+q[1],0)/tail.length:null;
  let x3=null;if(tres!=null)for(let i=im;i<sm.length;i++)if(sm[i][1]<=tres+.15*(tmax-tres)){x3=sm[i][0];break}
  const tb=S.brokeA+S.brokeC;return{tmax,xpk,kt,tres,x3,adesiva:tb?S.brokeA/tb:null,quebradas:S.nb0?tb/S.nb0:0}}
 function angle(){const s=S;const bins=new Map();let hmax=0;for(let i=0;i<s.N;i++)if(!s.ty[i]){const b=Math.floor(s.x[i]),h=s.y[i]+s.r[i];if(h>(bins.get(b)||0))bins.set(b,h);hmax=Math.max(hmax,h)}
@@ -326,13 +351,29 @@ function axes(c,x0,x1,y0,y1,xl,yl,xt,yt){const d=Math.min(2,devicePixelRatio||1)
  g.fillStyle=css('--ink');g.textAlign='center';g.fillText(xl,(L+W-R)/2,H-4);g.save();g.translate(12,(T+H-B)/2);g.rotate(-Math.PI/2);g.fillText(yl,0,0);g.restore();return{g,sx,sy,W,H,L,R,T,B}}
 const ticks=(m,n=5)=>{const st=[.1,.2,.25,.5,1,2,2.5,5,10,20,25,50,100].find(v=>m/v<=n)||100;const top=Math.ceil(m/st-1e-9)*st,o=[];for(let v=0;v<=top+1e-9;v+=st)o.push(+v.toFixed(3));return o};
 function line(g,pts,sx,sy,col,w,dash){g.strokeStyle=col;g.lineWidth=w;g.setLineDash(dash||[]);g.beginPath();pts.forEach((q,i)=>{const X=sx(q[0]),Y=sy(q[1]);i?g.lineTo(X,Y):g.moveTo(X,Y)});g.stroke();g.setLineDash([])}
+function expEnv(sk,ik){const pts=[50,100,200].map(sg=>[sg,Math.max(...EXP[sk][ik][sg][1])]);const f=fit(pts);return{pts,c:f.a,phi:Math.atan(f.b)*180/Math.PI}}
+function simEnv(){const L=LOG.anpet.filter(q=>q.solo===$('asolo').value&&q.int===$('aint').value);const by={};L.forEach(q=>by[q.sig]=q.tau);const pts=Object.entries(by).map(([a,b])=>[+a,b]);
+ const ref=CALREF[calKey()].map((t,i)=>[[50,100,200][i],t]);const fr=fit(ref);const fl=pts.length>=2?fit(pts):null;
+ return{pts,ref,refc:fr.a,refphi:Math.atan(fr.b)*180/Math.PI,live:fl?{c:fl.a,phi:Math.atan(fl.b)*180/Math.PI}:null}}
+function anpetDials(){const e=expEnv($('asolo').value,$('aint').value),m=simEnv();
+ $('d1').textContent=`${nf(e.c,0)} kPa · ${nf(e.phi,1)}°`;$('d2').textContent=`${nf(m.refc,0)} kPa · ${nf(m.refphi,1)}°`;
+ $('d3').textContent=m.live?`${nf(m.live.c,0)} kPa · ${nf(m.live.phi,1)}°`:(m.pts.length?`${m.pts.length} de 3 tensões`:'—');
+ const s=S;let cur='—';if(s&&s.rec.length){const R=s.rec.slice(-12);cur=nf(R.reduce((a,q)=>a+q[1],0)/R.length*KPA,0)+' kPa'}$('d4').textContent=cur;
+ const k=calKey(),c=CAL[k];$('apar').innerHTML=`<b>Modelo calibrado:</b> μ = ${nf(c.mu,2)} · μ<sub>r</sub> = ${nf(c.mur,2)} · rugosidade = ${nf(c.rug,1)} · ligações = ${c.adh?nf(c.adh,0)+' (dúcteis)':'nenhuma'}<br>${esc(INTERP[k])}`}
+const INTERP={I1:'Solo contra solo: atrito e intertravamento dos grãos (rolamento travado, faces ásperas). A “coesão” vem do intertravamento.',I2:'A película de ETS não penetrou: o filme lubrifica (atrito entre grãos menor) e não cola. Coesão ≈ 0 e φ menor.',I3S1:'A EAI penetrou no solo: mesmo atrito do I1 mais ligações dúcteis (o ligante deforma muito antes de romper), que mantêm a coesão até o fim do ensaio.',I3S2:'No Solo 2 a EAI quase não mudou a interface (c subiu só 2 kPa no ensaio): o modelo usa o mesmo ajuste do I1.'};
 function chart1(){const s=S,c=$('ch1');
- if(s.mode==='int'){const R=s.rec,ym=Math.max(5,...R.map(q=>q[1]))*1.15;const yt=ticks(ym);const A=axes(c,0,DXMAX,0,yt[yt.length-1],'deslocamento relativo Δx (diâmetros de grão)','τ (tensão cisalhante)',[0,.5,1,1.5,2,2.5,3],yt);
+ if(mode==='anpet'){const sk=$('asolo').value,ik=$('aint').value,sg=+$('asig').value,E=EXP[sk][ik];const ym=Math.max(...[50,100,200].map(x=>Math.max(...E[x][1])),...(s?s.rec.map(q=>q[1]*KPA):[0]))*1.1,yt=ticks(ym);
+  const A=axes(c,0,9,0,yt[yt.length-1],'deslocamento horizontal (mm)','τ (kPa)',[0,1.5,3,4.5,6,7.5,9],yt),g=A.g,col={50:'#2a9d8f',100:'#e09f3e',200:'#7b5ea7'};
+  [50,100,200].forEach(x=>line(g,E[x][0].map((d,i)=>[d,E[x][1][i]]),A.sx,A.sy,col[x],x===sg?2.6:1.1));
+  if(s&&s.rec.length)line(g,smooth(s.rec,.2).map(q=>[q[0]*MM,q[1]*KPA]),A.sx,A.sy,'#c8371e',2,[6,4]);
+  g.font='13px "Schibsted Grotesk",sans-serif';g.textAlign='left';[50,100,200].forEach((x,i)=>{g.fillStyle=col[x];g.fillRect(A.L+8,A.T+4+i*18,14,4);g.fillStyle=css('--ink');g.fillText(`ensaio ${x} kPa`,A.L+28,A.T+10+i*18)});
+  g.strokeStyle='#c8371e';g.setLineDash([6,4]);g.lineWidth=2;g.beginPath();g.moveTo(A.L+8,A.T+64);g.lineTo(A.L+22,A.T+64);g.stroke();g.setLineDash([]);g.fillStyle=css('--ink');g.fillText(`simulação ${sg} kPa`,A.L+28,A.T+68);return}
+ if(s.mode==='int'){const R=s.rec,ym=Math.max(5,...R.map(q=>q[1]))*1.15,ymn=Math.min(0,...R.map(q=>q[1]));const yt=ticks(ym);const A=axes(c,0,DX(),0,yt[yt.length-1],s.p.carga==='tra'?'abertura Δy (diâmetros de grão)':'deslocamento relativo Δx (diâmetros de grão)',s.p.carga==='tra'?'σ de tração':'τ (tensão cisalhante)',s.p.carga==='tra'?[0,.5,1,1.5,2]:[0,.5,1,1.5,2,2.5,3],yt);
   if(!R.length)return;const sm=smooth(R,.25);const a=s.ph===2?analyzeInt():null,g=A.g;
-  if(a&&a.xpk!=null){const z=[[0,a.xpk,'I'],[a.xpk,a.x3??DXMAX,'II'],[a.x3??DXMAX,DXMAX,'III']];const cols=['rgba(42,157,143,.10)','rgba(200,55,30,.10)','rgba(120,120,120,.10)'];
+  if(a&&a.xpk!=null){const z=[[0,a.xpk,'I'],[a.xpk,a.x3??DX(),'II'],[a.x3??DX(),DX(),'III']];const cols=['rgba(42,157,143,.10)','rgba(200,55,30,.10)','rgba(120,120,120,.10)'];
    z.forEach(([u,v,l],i)=>{if(v<=u)return;g.fillStyle=cols[i];g.fillRect(A.sx(u),A.T,A.sx(v)-A.sx(u),A.H-A.B-A.T);g.fillStyle=css('--ink');g.font='600 14px "Schibsted Grotesk",sans-serif';g.textAlign='center';g.fillText('Zona '+l,(A.sx(u)+A.sx(v))/2,A.T+16)});
    if(a.kt){line(g,[[0,0],[a.tmax/a.kt,a.tmax]],A.sx,A.sy,css('--mute'),1,[4,4])}
-   if(a.tres!=null)line(g,[[a.x3??a.xpk,a.tres],[DXMAX,a.tres]],A.sx,A.sy,css('--ink'),1,[5,4])}
+   if(a.tres!=null)line(g,[[a.x3??a.xpk,a.tres],[DX(),a.tres]],A.sx,A.sy,css('--ink'),1,[5,4])}
   line(g,R,A.sx,A.sy,'rgba(200,55,30,.25)',1);line(g,sm,A.sx,A.sy,'#c8371e',2);return}
  if(s.mode==='wall'){const pr=profile(),dm=Math.min(8,pr.top);const A=axes(c,0,dm,0,.8,'distância à superfície do agregado (diâmetros)','porosidade',ticks(dm,8),[0,.2,.4,.6,.8]);
   const g=A.g;g.fillStyle='rgba(200,55,30,.10)';g.fillRect(A.sx(0),A.T,A.sx(1)-A.sx(0),A.H-A.B-A.T);
@@ -345,7 +386,21 @@ function chart1(){const s=S,c=$('ch1');
  const A=axes(c,0,1,0,1,'','',[],[]);A.g.fillStyle=css('--mute');A.g.textAlign='center';A.g.fillText('Ângulo do talude no painel de leitura',c.clientWidth/2,c.clientHeight/2)}
 function fit(pts){const n=pts.length;if(n<2)return null;const sx=pts.reduce((a,q)=>a+q[0],0),sy=pts.reduce((a,q)=>a+q[1],0),sxx=pts.reduce((a,q)=>a+q[0]**2,0),sxy=pts.reduce((a,q)=>a+q[0]*q[1],0),den=n*sxx-sx*sx;if(Math.abs(den)<1e-9)return null;const b=(n*sxy-sx*sy)/den;return{a:(sy-b*sx)/n,b}}
 function chart2(){const c=$('ch2');
- if(mode==='int'){const L=LOG.int.filter(q=>q.tmax!=null),ym=Math.max(10,...L.map(q=>q.tmax))*1.15,yt=ticks(ym),xm=Math.max(20,...L.map(q=>q.sig));
+ if(mode==='anpet'){const e=expEnv($('asolo').value,$('aint').value),m=simEnv();const ym=Math.max(220,...e.pts.map(q=>q[1]),...m.ref.map(q=>q[1]),...m.pts.map(q=>q[1]))*1.05,yt=ticks(ym);
+  const A=axes(c,0,220,0,yt[yt.length-1],'tensão normal σ (kPa)','τ (kPa)',[0,50,100,150,200],yt),g=A.g;
+  line(g,[[0,e.c],[220,e.c+220*Math.tan(e.phi*Math.PI/180)]],A.sx,A.sy,css('--ink'),1.6);
+  line(g,[[0,m.refc],[220,m.refc+220*Math.tan(m.refphi*Math.PI/180)]],A.sx,A.sy,'#c8371e',1.4,[6,4]);
+  e.pts.forEach(q=>{g.fillStyle=css('--ink');g.beginPath();g.arc(A.sx(q[0]),A.sy(q[1]),5,0,7);g.fill()});
+  m.ref.forEach(q=>{g.strokeStyle='#c8371e';g.lineWidth=1.8;g.beginPath();g.arc(A.sx(q[0]),A.sy(q[1]),5.5,0,7);g.stroke()});
+  m.pts.forEach(q=>{g.fillStyle='#c8371e';g.beginPath();g.arc(A.sx(q[0]),A.sy(q[1]),3.5,0,7);g.fill()});
+  g.font='13px "Schibsted Grotesk",sans-serif';g.textAlign='left';g.fillStyle=css('--ink');
+  g.fillText(`● ensaio: c = ${nf(e.c,0)} kPa, φ = ${nf(e.phi,1)}°`,A.L+8,A.T+14);g.fillStyle='#c8371e';g.fillText(`○ simulação (3 arranjos): c = ${nf(m.refc,0)} kPa, φ = ${nf(m.refphi,1)}°`,A.L+8,A.T+32);
+  g.fillText(`• suas simulações nesta página${m.live?`: c = ${nf(m.live.c,0)} kPa, φ = ${nf(m.live.phi,1)}°`:''}`,A.L+8,A.T+50);return}
+ if(mode==='int'&&S&&S.p.carga==='tra'){const L=LOG.int.filter(q=>q.tmax!=null&&q.carga==='tra'),ym=Math.max(10,...L.map(q=>q.tmax))*1.15,yt=ticks(ym);
+  const A=axes(c,0,7,0,yt[yt.length-1],'espessura do filme (camadas de grãos)','σ máx de tração',[0,1,2,3,4,5,6,7],yt),g=A.g;
+  L.forEach(q=>{g.fillStyle=q.agua>0?'#2a6f97':'#c8371e';g.beginPath();g.arc(A.sx(q.esp),A.sy(q.tmax),5,0,7);g.fill()});
+  g.textAlign='left';g.font='13px "Schibsted Grotesk",sans-serif';g.fillStyle='#c8371e';g.fillText('● seco',A.L+8,A.T+14);g.fillStyle='#2a6f97';g.fillText('● com água',A.L+70,A.T+14);return}
+ if(mode==='int'){const L=LOG.int.filter(q=>q.tmax!=null&&q.carga!=='tra'),ym=Math.max(10,...L.map(q=>q.tmax))*1.15,yt=ticks(ym),xm=Math.max(20,...L.map(q=>q.sig));
   const A=axes(c,0,xm,0,yt[yt.length-1],'tensão normal σ','τ',ticks(xm),yt),g=A.g;
   const f1=fit(L.map(q=>[q.sig,q.tmax])),f2=fit(L.filter(q=>q.tres!=null).map(q=>[q.sig,q.tres]));
   if(f1)line(g,[[0,f1.a],[xm,f1.a+f1.b*xm]],A.sx,A.sy,'#c8371e',1.2,[5,4]);if(f2)line(g,[[0,f2.a],[xm,f2.a+f2.b*xm]],A.sx,A.sy,css('--mute'),1.2,[5,4]);
@@ -367,14 +422,20 @@ function chart2(){const c=$('ch2');
 
 // ================================================================ textos, mostradores e diário de cada modo
 const TXT={
- int:{t:'Interface entre camadas',c1:'Curva τ × Δx (como a Figura 1.18)',n1:'Zona I: ligações elásticas, τ = kₜ·Δx (tracejado: kₜ). Zona II: as ligações acumulam dano e rompem. Zona III: resta o atrito entre as faces e os grãos soltos (tracejado: τ residual).',
-  c2:'Envoltória da interface: τ × σ',n2:'Rode ensaios com σ diferentes: a reta dos picos dá a adesão aparente c e o ângulo de atrito da interface; a dos residuais, só atrito.',
-  cols:['#','adesão','coesão','água','rugos.','σ','kₜ','τ máx','Δx pico','τ resid.','rupt. adesiva'],
-  row:q=>[nf(q.adh,0),nf(q.coh,0),nf(q.agua*100,0)+'%',nf(q.rug,1),nf(q.sig,0),q.kt!=null?nf(q.kt,1):'—',nf(q.tmax,2),nf(q.xpk,2),q.tres!=null?nf(q.tres,2):'—',q.adesiva!=null?nf(q.adesiva*100,0)+'%':'—'],
+ anpet:{t:'Seus ensaios (ANPET 2026)',c1:'τ × deslocamento horizontal: ensaio e simulação',n1:'Linhas cheias: os 3 ensaios da interface escolhida (a tensão escolhida em destaque). Tracejado vermelho: a simulação calibrada, convertida com 1 unidade de tensão = 10 kPa e 1 diâmetro de grão = 3 mm.',
+  c2:'Envoltória de ruptura: ensaio × simulação',n2:'Ensaio: τ máximo de cada curva (como no artigo). Simulação: média do patamar entre 4,5 e 9 mm, que nos seus ensaios coincide com o máximo.',
+  cols:['solo','interface','c ensaio','φ ensaio','c simulação','φ simulação','parâmetros do modelo'],row:null,dials:['ensaio: c · φ','simulação calibrada: c · φ','suas simulações: c · φ','τ simulado agora'],
+  txt:`<div class="panel"><h2>Como foi calibrado</h2><p>Para cada interface, busquei em grade o atrito entre grãos (μ), a resistência ao rolamento (μ<sub>r</sub>), a rugosidade das faces e a resistência e ductilidade das ligações, rodando σ = 50, 100 e 200 kPa com 3 arranjos de grãos cada, até a envoltória simulada (c, φ) chegar perto da do ensaio.</p><p>Escalas: σ<sub>modelo</sub> = σ/10 kPa; τ em kPa = 10·τ<sub>modelo</sub>; 1 diâmetro de grão = 3 mm.</p></div>
+  <div class="panel"><h2>O que o modelo sugere sobre cada interface</h2><p><b>I1</b>: a resistência vem do atrito e do intertravamento dos grãos; a “coesão” de 16–19 kPa aparece só pelo intertravamento, sem cola. <b>I2</b>: basta reduzir o atrito no filme para reproduzir c ≈ 0 e φ menor, o que apoia a hipótese de lubrificação pela película de ETS. <b>I3</b> (Solo 1): é preciso acrescentar ligações <b>dúcteis</b>; ligações frágeis romperiam cedo e não mudariam o patamar.</p></div>
+  <div class="panel"><h2>Limites</h2><p>Modelo 2D com ~240 grãos e escalas ajustadas: reproduz a envoltória, não a curva inteira (a simulação sobe mais rápido que o ensaio). Cada ensaio simulado oscila cerca de ±15 kPa; por isso a referência usa 3 arranjos. O deslocamento vertical (dilatância) dos ensaios ainda não foi comparado.</p></div>`},
+ int:{t:'Interface entre camadas',c1:'Curva tensão × deslocamento (como a Figura 1.18)',n1:'Zona I: ligações elásticas, τ = kₜ·Δx (tracejado: kₜ). Zona II: as ligações acumulam dano e rompem. Zona III: resta o atrito entre as faces e os grãos soltos (tracejado: τ residual).',
+  c2:'Envoltória (cisalhamento) ou espessura (tração)',n2:'Cisalhamento: rode com σ diferentes; a reta dos picos dá a adesão aparente c e o ângulo de atrito da interface, a dos residuais só atrito. Tração: rode com espessuras diferentes do filme.',
+  cols:['#','carga','camadas','adesão','coesão','água','rugos.','σ','rigidez','pico','desl. pico','residual','rupt. adesiva'],
+  row:q=>[q.carga==='tra'?'tração':'cisalh.',nf(q.esp,0),nf(q.adh,0),nf(q.coh,0),nf(q.agua*100,0)+'%',nf(q.rug,1),q.carga==='tra'?'—':nf(q.sig,0),q.kt!=null?nf(q.kt,1):'—',nf(q.tmax,2),nf(q.xpk,2),q.tres!=null?nf(q.tres,2):'—',q.adesiva!=null?nf(q.adesiva*100,0)+'%':'—'],
   dials:['τ máx (pico)','kₜ — módulo de reação','τ residual','ruptura adesiva'],
-  txt:`<div class="panel"><h2>O que é simulado</h2><p>Duas camadas rígidas com faces ásperas (as camadas do pavimento) e, entre elas, um filme de grãos (a pintura de ligação com finos). Antes de cisalhar, cada par de grãos que se toca ganha uma <b>ligação</b>: verde-azulada entre filme e face (<b>adesão</b>), verde-oliva dentro do filme (<b>coesão</b>). A cor muda para vermelho conforme a ligação acumula dano.</p></div>
+  txt:`<div class="panel"><h2>O que é simulado</h2><p>Duas placas rígidas (aderentes) com faces ásperas ou lisas e, entre elas, um filme de grãos (o adesivo, como a pintura de ligação). A placa de cima é cisalhada sob σ ou puxada para cima. Antes de cisalhar, cada par de grãos que se toca ganha uma <b>ligação</b>: verde-azulada entre filme e face (<b>adesão</b>), verde-oliva dentro do filme (<b>coesão</b>). A cor muda para vermelho conforme a ligação acumula dano.</p></div>
   <div class="panel"><h2>A ligação é uma zona coesiva em miniatura</h2><p>Cada ligação segue uma lei bilinear: cresce elástica até a sua resistência e depois perde força até romper com 12 vezes o deslocamento do pico. Somando centenas delas, aparece a curva da <b>Lei de Goodman</b> com as três zonas, sem que ela seja imposta.</p></div>
-  <div class="panel"><h2>Experimentos</h2><p><b>Água</b>: suba para 60% e veja a ruptura passar a ser adesiva (na face) e o pico cair. <b>Rugosidade</b>: com faces lisas (0) o residual quase some; com 1,0 o intertravamento mantém τ alto na Zona III. <b>σ</b>: repita com 5, 10 e 20 para traçar a envoltória.</p></div>`},
+  <div class="panel"><h2>Experimentos</h2><p><b>Duas placas e um filme fino</b>: rugosidade 0 e espessura 1–2 camadas. Compare <b>tração</b> e <b>cisalhamento</b>: na tração não há Zona III, porque depois que as ligações rompem nada segura as placas; no cisalhamento resta o atrito.</p><p><b>Água</b>: suba para 60% e veja a ruptura passar a ser adesiva (na face) e o pico cair. <b>Rugosidade</b>: com faces lisas (0) o residual quase some; com 1,0 o intertravamento mantém τ alto na Zona III. <b>σ</b>: repita com 5, 10 e 20 para traçar a envoltória.</p></div>`},
  wall:{t:'Efeito parede (ZTI)',c1:'Porosidade × distância ao agregado',n1:'Faixa vermelha: até 1 diâmetro médio de grão a partir da superfície. Tracejado: porosidade média no interior da pasta.',
   c2:'Finos × porosidade junto ao agregado',n2:'Cada ensaio completo entra aqui. Compare sem finos e com 10–20% de finos.',
   cols:['#','faixa','finos','μ','n parede (0–1 d)','n interior','razão','espessura'],
@@ -391,15 +452,16 @@ const TXT={
  col:{t:'Coluna que desmorona',c1:'—',n1:'',c2:'Ângulo do talude × μr',n2:'Cada pilha em repouso entra aqui.',cols:['#','μ','μr','ângulo'],row:q=>[nf(q.mu,2),nf(q.mur,2),q.ang!=null?nf(q.ang,1)+'°':'—'],
   dials:['ângulo do talude','—','tempo','arctan(μ) do contato'],
   txt:`<div class="panel"><h2>O que observar</h2><p>Compare μ<sub>r</sub> = 0 e 0,3: sem resistência ao rolamento os discos rolam para longe e a pilha fica quase plana; com o rolamento travado ela para num talude.</p></div>`}};
-function setDials(){const T=TXT[mode];['l1','l2','l3','l4'].forEach((id,i)=>$(id).textContent=T.dials[i]);['d1','d2','d3','d4'].forEach(id=>$(id).textContent='—');
+function setDials(){const T=TXT[mode];if(mode==='anpet'){['l1','l2','l3','l4'].forEach((id,i)=>$(id).textContent=T.dials[i]);anpetDials();return}const dl=mode==='int'&&$('carga').value==='tra'?['σ máx de tração','kₙ — rigidez normal','σ residual','ruptura adesiva']:T.dials;['l1','l2','l3','l4'].forEach((id,i)=>$(id).textContent=dl[i]);['d1','d2','d3','d4'].forEach(id=>$(id).textContent='—');
  if(mode==='shear'||mode==='col')$('d4').textContent=nf(Math.atan(+$('mu').value)*180/Math.PI,1)+'°'}
-function refresh(){const T=TXT[mode];$('ptit').textContent=T.t;$('c1t').textContent=T.c1;$('c1n').textContent=T.n1;$('c2t').textContent=T.c2;$('c2n').textContent=T.n2;$('txt').innerHTML=T.txt;
+function refresh(){const T=TXT[mode];$('dials').classList.toggle('small',mode==='anpet');$('logt').textContent=mode==='anpet'?'Calibração: ensaio × simulação (as 6 interfaces)':'Diário de ensaios';$('ptit').textContent=T.t;$('c1t').textContent=T.c1;$('c1n').textContent=T.n1;$('c2t').textContent=T.c2;$('c2n').textContent=T.n2;$('txt').innerHTML=T.txt;
  $('loghead').innerHTML='<tr>'+T.cols.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr>';
- const L=LOG[mode];$('log').innerHTML=L.length?L.map((q,i)=>'<tr><td>'+(i+1)+'</td>'+T.row(q).map(v=>`<td>${esc(v)}</td>`).join('')+'</tr>').join(''):`<tr><td colspan="${T.cols.length}" style="text-align:left">Cada ensaio completo entra aqui.</td></tr>`;
- $('lfch').textContent=mode==='int'?'Mostrar ligações adesivas':mode==='wall'?'Marcar a faixa de 1 diâmetro':'Mostrar cadeias de força';
+ if(mode==='anpet'){$('log').innerHTML=['S1','S2'].flatMap(sk=>['I1','I2','I3'].map(ik=>{const e=expEnv(sk,ik),k=ik==='I3'?'I3'+sk:ik,fr=fit(CALREF[k].map((t,i)=>[[50,100,200][i],t])),c=CAL[k];return`<tr><td>${sk==='S1'?'Solo 1 (A-4)':'Solo 2 (A-2-4)'}</td><td>${ik}</td><td>${nf(e.c,0)} kPa</td><td>${nf(e.phi,1)}°</td><td>${nf(fr.a,0)} kPa</td><td>${nf(Math.atan(fr.b)*180/Math.PI,1)}°</td><td>μ ${nf(c.mu,2)} · μr ${nf(c.mur,2)} · rug. ${nf(c.rug,1)} · lig. ${c.adh?nf(c.adh,0):'0'}</td></tr>`})).join('')}else{
+ const L=LOG[mode];$('log').innerHTML=L.length?L.map((q,i)=>'<tr><td>'+(i+1)+'</td>'+T.row(q).map(v=>`<td>${esc(v)}</td>`).join('')+'</tr>').join(''):`<tr><td colspan="${T.cols.length}" style="text-align:left">Cada ensaio completo entra aqui.</td></tr>`;}
+ $('lfch').textContent=(mode==='int'||mode==='anpet')?'Mostrar ligações adesivas':mode==='wall'?'Marcar a faixa de 1 diâmetro':'Mostrar cadeias de força';
  document.querySelectorAll('[data-for]').forEach(e=>e.hidden=!e.dataset.for.split(' ').includes(mode));
  chart1();chart2()}
-function outputs(){$('omu').textContent=nf(+$('mu').value,2);$('omur').textContent=nf(+$('mur').value,2);$('osig').textContent=$('sig').value;$('oadh').textContent=$('adh').value;$('ocoh').textContent=$('coh').value;$('oagua').textContent=$('agua').value+'%';$('orug').textContent=nf(+$('rug').value,1);$('ofaixa').textContent=nf(+$('faixa').value,1);$('ofinos').textContent=$('finos').value+'%'}
+function outputs(){$('omu').textContent=nf(+$('mu').value,2);$('omur').textContent=nf(+$('mur').value,2);$('osig').textContent=$('sig').value;$('oadh').textContent=$('adh').value;$('ocoh').textContent=$('coh').value;$('oagua').textContent=$('agua').value+'%';$('orug').textContent=nf(+$('rug').value,1);$('ofaixa').textContent=nf(+$('faixa').value,1);$('ofinos').textContent=$('finos').value+'%';$('oesp').textContent=$('esp').value}
 
 // ================================================================ laço
 let frame=0;
@@ -408,13 +470,16 @@ function loop(){if(running&&S&&S.ph<2){const n=+$('spd').value;for(let i=0;i<n;i
   if(s.mode==='shear'){const R=s.rec;if(R.length){$('d3').textContent=nf(R[R.length-1][0],2);$('d2').textContent=nf(R.slice(-8).reduce((a,q)=>a+q[1],0)/Math.min(8,R.length),3)}
    $('d1').textContent=s.res!=null?nf(Math.atan(s.res)*180/Math.PI,1)+'°':'—';if(frame%6===0)chart1()}
   else if(s.mode==='col'){$('d3').textContent=nf(s.t,0);if(s.ph>=1&&frame%20===0){const a=angle();$('d1').textContent=a!=null?nf(a,1)+'°':'—'}}
+  else if(mode==='anpet'){if(frame%6===0){anpetDials();chart1()}}
   else if(s.mode==='int'){if(s.rec.length&&frame%6===0){const a=analyzeInt();$('d1').textContent=a.tmax!=null?nf(a.tmax,2):'—';$('d2').textContent=a.kt!=null?nf(a.kt,1):'—';
     $('d3').textContent=s.ph===2&&a.tres!=null?nf(a.tres,2):'—';$('d4').textContent=a.adesiva!=null?nf(a.adesiva*100,0)+'%':'—';chart1()}}
   else if(frame%15===0||s.ph===2&&frame%60===0){const pr=profile().sum;$('d1').textContent=nf(pr.wall,3);$('d2').textContent=nf(pr.bulk,3);$('d3').textContent=nf(pr.razao,2)+'×';$('d4').textContent=pr.esp!=null?nf(pr.esp,2)+' d':'—';chart1()}}
  requestAnimationFrame(loop)}
 function restart(){build();refresh();running=true;$('play').textContent='Pausar'}
-['mu','mur','sig','iin','adh','coh','agua','rug','faixa','finos'].forEach(id=>$(id).addEventListener('input',()=>{outputs();restart()}));
+['mu','mur','sig','iin','adh','coh','agua','rug','faixa','finos','esp','carga'].forEach(id=>$(id).addEventListener('input',()=>{outputs();restart()}));
 $('spd').addEventListener('input',()=>$('ospd').textContent=$('spd').value);
+['asolo','aint','asig'].forEach(id=>$(id).addEventListener('input',()=>{AQ=[];restart()}));
+$('arun3').onclick=()=>{AQ=[100,200];$('asig').value=50;restart()};
 $('cor').addEventListener('input',()=>draw());$('fch').addEventListener('input',()=>draw());
 $('play').onclick=()=>{if(S&&S.ph===2){restart();return}running=!running;$('play').textContent=running?'Pausar':'Continuar'};
 $('reset').onclick=restart;
