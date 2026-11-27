@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulação DEM de interfaces</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday learning tool, lab-bench precise
+   IDEA a materials lab bench: the specimen under load, the dial gauges, the logbook of runs
+   PICTURE the grain assembly being tested live, bonds and force chains drawn through it
+   COLOUR stone ground, ink, brick accent for loading parts and damage, viridis for fields
+   TYPE Schibsted Grotesk throughout
+   LAYOUT laptop: specimen left (2/3), controls right; gauges, curves and logbook below. phone: title, specimen, gauges, controls */
+:root{color-scheme:light dark;--bg:light-dark(#e7e4df,#171513);--panel:light-dark(#fff,#211e1b);--ink:light-dark(#14120f,#ece8e2);--mute:light-dark(#5b5650,#a9a29a);--rule:light-dark(#cfcac2,#3a352f);--acc:#c8371e;--sea:light-dark(#f6f4f0,#0f0e0d)}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 "Schibsted Grotesk",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(18px,3vw,36px) max(4vw,16px);max-width:1400px;margin:0 auto}
+nav.top{display:flex;gap:16px;flex-wrap:wrap;font-size:15px;margin-bottom:10px}
+nav.top a{color:var(--mute)}
+h1{font-size:clamp(28px,4vw,42px);line-height:1.05;letter-spacing:-.02em;margin:0 0 6px;text-wrap:balance}
+.sub{color:var(--mute);margin:0 0 14px;max-width:80ch}
+.modes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--rule);border-radius:12px;overflow:hidden;margin-bottom:14px;background:var(--panel)}
+@media(max-width:640px){.modes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.modes button{font:inherit;border:0;background:none;color:var(--ink);padding:10px 12px;text-align:left;cursor:pointer;min-height:56px;border-right:1px solid var(--rule)}
+.modes button b{display:block;font-size:16px}
+.modes button span{font-size:13px;color:var(--mute)}
+.modes button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.modes button[aria-pressed=true] span{color:var(--bg);opacity:.8}
+.lab{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:860px){.lab{grid-template-columns:minmax(0,1fr)}}
+.bench{background:var(--sea);border:1px solid var(--rule);border-radius:12px;overflow:hidden;position:relative}
+#cv{display:block;width:100%;height:auto}
+.badge{position:absolute;left:10px;top:8px;background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:3px 10px;font-size:14px}
+.dials{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5em,1fr));gap:8px;margin-top:10px}
+.dial{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:8px 12px}
+.dial b{display:block;font-size:clamp(22px,3vw,30px);line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dial span{font-size:13px;color:var(--mute)}
+.dial:first-child b{color:var(--acc)}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:14px}
+.panel h2{font-size:18px;margin:0 0 8px}
+.ctl{margin:10px 0}
+.ctl label{display:flex;justify-content:space-between;gap:8px;font-size:15px;font-weight:600}
+.ctl label output{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.ctl small{display:block;color:var(--mute);font-size:13px;line-height:1.35}
+input[type=range]{width:100%;accent-color:var(--acc);height:32px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{font:inherit;font-weight:600;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);cursor:pointer}
+.btn.go{background:var(--acc);border-color:var(--acc);color:#fff}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.chk{display:flex;gap:8px;align-items:center;min-height:36px;font-size:15px}
+select{font:inherit;font-size:16px;min-height:40px;border:1px solid var(--rule);border-radius:8px;background:var(--bg);color:var(--ink);padding:0 8px;width:100%}
+.charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:16px}
+@media(max-width:760px){.charts{grid-template-columns:minmax(0,1fr)}}
+.fig{position:relative;height:280px}
+.fig canvas{position:absolute;inset:0;width:100%;height:100%}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;margin-top:8px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--rule);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+.txt{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:16px}
+.txt p{margin:0 0 8px;font-size:15px}
+.note{font-size:13px;color:var(--mute);margin:6px 0 0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="band">
+<nav class="top"><a href="python/DEM_atrito_entre_graos.ipynb" download>Baixar o caderno do Colab (.ipynb)</a><a href="python/dem2d.py" download>Baixar o simulador em Python</a></nav>
+<h1>Superfícies e interfaces vistas grão a grão</h1>
+<p class="sub">Simulação de Elementos Discretos (DEM) no seu navegador. Cada disco é um grão; em cada contato há uma mola normal, um atrito de Coulomb |F<sub>t</sub>| ≤ μ·F<sub>n</sub> e, no modo Interface, ligações adesivas que acumulam dano. Escolha o ensaio:</p>
+
+<div class="modes" role="group" aria-label="Ensaio">
+ <button data-m="int" aria-pressed="true"><b>Interface</b><span>aderência entre camadas (Leutner)</span></button>
+ <button data-m="wall" aria-pressed="false"><b>Efeito parede</b><span>porosidade junto ao agregado (ZTI)</span></button>
+ <button data-m="shear" aria-pressed="false"><b>Cisalhamento</b><span>φ do solo a partir do atrito entre grãos</span></button>
+ <button data-m="col" aria-pressed="false"><b>Coluna</b><span>talude de grãos que desmorona</span></button>
+</div>
+
+<div class="lab">
+ <section>
+  <div class="bench"><canvas id="cv" width="900" height="520" aria-label="Simulação dos grãos"></canvas><div class="badge" id="fase">Carregando…</div></div>
+  <div class="dials">
+   <div class="dial"><b id="d1">—</b><span id="l1"></span></div>
+   <div class="dial"><b id="d2">—</b><span id="l2"></span></div>
+   <div class="dial"><b id="d3">—</b><span id="l3"></span></div>
+   <div class="dial"><b id="d4">—</b><span id="l4"></span></div>
+  </div>
+ </section>
+ <aside class="panel">
+  <h2 id="ptit">Ensaio</h2>
+  <div class="ctl" data-for="int"><label for="adh"><span>Adesão ligante–agregado</span> <output id="oadh"></output></label><input type="range" id="adh" min="0" max="60" step="1" value="25"><small>Resistência das ligações entre o filme e as faces das camadas.</small></div>
+  <div class="ctl" data-for="int"><label for="coh"><span>Coesão dentro do ligante</span> <output id="ocoh"></output></label><input type="range" id="coh" min="0" max="60" step="1" value="30"><small>Resistência das ligações entre os grãos do próprio filme.</small></div>
+  <div class="ctl" data-for="int"><label for="agua"><span>Água na interface</span> <output id="oagua"></output></label><input type="range" id="agua" min="0" max="100" step="5" value="0"><small>Enfraquece muito a adesão e pouco a coesão.</small></div>
+  <div class="ctl" data-for="int"><label for="rug"><span>Rugosidade das faces</span> <output id="orug"></output></label><input type="range" id="rug" min="0" max="1.5" step="0.1" value="0.5"><small>Altura das asperezas das superfícies, em diâmetros de grão.</small></div>
+  <div class="ctl" data-for="int shear"><label for="sig"><span>Tensão normal σ</span> <output id="osig"></output></label><input type="range" id="sig" min="0" max="40" step="1" value="10"><small>Compressão aplicada pela placa de cima.</small></div>
+  <div class="ctl" data-for="wall"><label for="faixa"><span>Faixa de tamanhos (d<sub>máx</sub>/d<sub>mín</sub>)</span> <output id="ofaixa"></output></label><input type="range" id="faixa" min="1" max="3" step="0.1" value="1.5"><small>1 = grãos iguais; 3 = cimento bem graduado.</small></div>
+  <div class="ctl" data-for="wall"><label for="finos"><span>Finos (tipo sílica ativa)</span> <output id="ofinos"></output></label><input type="range" id="finos" min="0" max="25" step="1" value="0"><small>% da área de sólidos em grãos pequenos (d = 0,35).</small></div>
+  <div class="ctl" data-for="int shear col wall"><label for="mu"><span>Atrito entre grãos μ</span> <output id="omu"></output></label><input type="range" id="mu" min="0" max="1" step="0.05" value="0.5"><small>Atrito de deslizamento no contato.</small></div>
+  <div class="ctl" data-for="int shear col"><label for="mur"><span>Resistência ao rolamento μ<sub>r</sub></span> <output id="omur"></output></label><input type="range" id="mur" min="0" max="0.6" step="0.05" value="0"><small>Imita grãos angulosos.</small></div>
+  <div class="ctl" data-for="shear"><label for="iin">Velocidade do ensaio</label><select id="iin"><option value="0.005">Lenta, quase-estática (I = 0,005)</option><option value="0.03">Média (I = 0,03)</option><option value="0.15">Rápida, dinâmica (I = 0,15)</option></select></div>
+  <div class="ctl"><label for="spd"><span>Velocidade da animação</span> <output id="ospd">60</output></label><input type="range" id="spd" min="10" max="300" step="10" value="60"></div>
+  <div class="ctl" data-for="shear col"><label for="cor">Cor dos grãos</label><select id="cor"><option value="v">Velocidade</option><option value="f">Faixas (mostra a deformação)</option><option value="w">Rotação</option></select></div>
+  <label class="chk"><input type="checkbox" id="fch" checked> <span id="lfch">Mostrar cadeias de força</span></label>
+  <div class="btns"><button class="btn go" id="play">Pausar</button><button class="btn" id="reset">Reiniciar</button></div>
+  <p class="note">Mudar um parâmetro reinicia o ensaio. Cada ensaio completo entra no diário.</p>
+ </aside>
+</div>
+
+<div class="charts">
+ <section class="panel"><h2 id="c1t"></h2><div class="fig"><canvas id="ch1"></canvas></div><p class="note" id="c1n"></p></section>
+ <section class="panel"><h2 id="c2t"></h2><div class="fig"><canvas id="ch2"></canvas></div><p class="note" id="c2n"></p></section>
+</div>
+
+<section class="panel" style="margin-top:16px">
+ <h2>Diário de ensaios</h2>
+ <div class="scroll"><table><thead id="loghead"></thead><tbody id="log"></tbody></table></div>
+</section>
+
+<section class="txt" id="txt"></section>
+</div>
+<script>
+{
+const $=id=>document.getElementById(id);
+const nf=(v,d)=>(+v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const REF=[[0,0,.054],[.1,0,.149],[.2,0,.201],[.3,0,.2],[.5,0,.226],[.8,0,.254],[1,0,.272],[0,.3,.054],[.1,.3,.151],[.2,.3,.248],[.3,.3,.32],[.5,.3,.311],[.8,.3,.365],[1,.3,.399]];
+const KN=2000,KT=1000,E=.3,ZETA=-Math.log(E)/Math.sqrt(Math.PI**2+Math.log(E)**2);
+const KBN=600,KBT=300,SOFT=12;          // ligação: rigidez normal e tangencial; δ_ruptura = SOFT·δ_início
+const DXMAX=3, GMAX=2;                    // deslocamento final no modo Interface; deformação final no cisalhamento
+let S=null,running=true,mode='int',rng;
+const LOG={int:[],wall:[],shear:[],col:[]};
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const P=()=>({mu:+$('mu').value,mur:+$('mur').value,sig:+$('sig').value,I:+$('iin').value,adh:+$('adh').value,coh:+$('coh').value,agua:+$('agua').value/100,rug:+$('rug').value,faixa:+$('faixa').value,finos:+$('finos').value/100});
+
+// ================================================================ montagem dos ensaios
+function build(){
+ rng=mulberry(7);const p=P();const g=[];// [x,y,r,tipo,lado]  tipo 0 livre, 1 fixo, 2 placa; lado: 0 filme, 1 face de baixo, 2 face de cima, 3 enfeite
+ let Lx=null,W=0,H=0,grav=0,floor=false,gate=null;
+ if(mode==='shear'){Lx=24;const nx=Math.floor(Lx/1.1),nl=16;
+  for(let x=.25;x<Lx;x+=.5)g.push([x,0,.25,1,1]);
+  let top=0;for(let j=0;j<nl;j++)for(let i=0;i<nx;i++){const y=1+j*1.15;top=Math.max(top,y);g.push([(i+.5)*Lx/nx+(rng()-.5)*.1,y,.4+rng()*.2,0,0])}
+  for(let x=.25;x<Lx;x+=.5)g.push([x,top+1,.25,2,2]);W=Lx;H=top+2.5;
+ }else if(mode==='col'){W=60;grav=1;gate=14.1;for(let x=.3;x<W;x+=.6)g.push([x,.3,.3,1,1]);
+  for(let j=0;j<28;j++)for(let i=0;i<14;i++)g.push([i+.6+(rng()-.5)*.1,j*1.05+1.3,.4+rng()*.2,0,0]);H=32;
+ }else if(mode==='int'){Lx=24;const A=p.rug,hh=Array.from({length:24},()=>A*(2*rng()-1)),prof=x=>{const i=((Math.floor(x)%24)+24)%24,f=x-Math.floor(x),j=(i+1)%24;return hh[i]*(1-f)+hh[j]*f};// asperezas aleatórias
+  // camada de baixo (fixa): face ondulada + duas fileiras de enfeite
+  for(let x=.5;x<Lx;x+=1){const y=2.5+prof(x);g.push([x,y,.5,1,1]);g.push([x,y-1,.5,1,3]);g.push([x,y-2,.5,1,3])}
+  // filme de ligante: 4 camadas de grãos livres que acompanham a ondulação da face
+  for(let j=0;j<4;j++)for(let i=0;i<24;i++){const x=(i+.5)*Lx/24+(rng()-.5)*.06;g.push([x,3.5+j*1.0+prof(x),.45+rng()*.1,0,0])}
+  // camada de cima (placa): face com a mesma ondulação, encostada no filme + enfeite
+  const yt=7.52;for(let x=.5;x<Lx;x+=1){const y=yt+prof(x);g.push([x,y,.5,2,2]);g.push([x,y+1,.5,2,3]);g.push([x,y+2,.5,2,3])}
+  W=Lx;H=yt+A+2.8;
+ }else{ // efeito parede: grãos caem sobre a superfície plana de um agregado
+  Lx=30;grav=1;floor=true;const dm=2/(1+p.faixa),rmin=dm/2,rmaxg=p.faixa*dm/2;// diâmetro médio = 1
+  const areaAlvo=Lx*22*.8;let aF=p.finos*areaAlvo,aG=areaAlvo-aF;const list=[];
+  while(aG>0){const r=rmin+(rmaxg-rmin)*rng();list.push(r);aG-=Math.PI*r*r}
+  while(aF>0){list.push(.175);aF-=Math.PI*.175*.175}
+  list.sort(()=>rng()-.5);
+  // posições iniciais: grade folgada, de baixo para cima
+  const cell=2*Math.max(rmaxg,.2)+.05,nc=Math.floor(Lx/cell);list.forEach((r,k)=>{const i=k%nc,j=Math.floor(k/nc);g.push([(i+.5)*Lx/nc+(rng()-.5)*.1,1+j*cell+rng()*.1,r,0,0])});
+  W=Lx;H=24;
+ }
+ const N=g.length,s={N,Lx,W,H,mode,p,t:0,step:0,ph:0,grav,floor,gate,x:new Float64Array(N),y:new Float64Array(N),vx:new Float64Array(N),vy:new Float64Array(N),w:new Float64Array(N),r:new Float64Array(N),m:new Float64Array(N),I:new Float64Array(N),ty:new Uint8Array(N),side:new Uint8Array(N),x0:new Float64Array(N),y0:new Float64Array(N),fx:new Float64Array(N),fy:new Float64Array(N),tq:new Float64Array(N),hist:new Map(),C:[],V:0,vyp:0,P:0,Fp:[0,0],rec:[],B:[],nb0:0,brokeA:0,brokeC:0};
+ let mmin=1e9,rmax=0;g.forEach(([x,y,r,t,sd],i)=>{s.x[i]=s.x0[i]=x;s.y[i]=s.y0[i]=y;s.r[i]=r;s.m[i]=Math.PI*r*r;s.I[i]=.5*s.m[i]*r*r;s.ty[i]=t;s.side[i]=sd;if(!t)mmin=Math.min(mmin,s.m[i]);rmax=Math.max(rmax,r)});
+ s.rmax=rmax;s.dt=.1*Math.sqrt(mmin/KN);if(mode==='shear'||mode==='int')s.P=p.sig*Lx;
+ S=s;fase();setDials();
+}
+function fase(){const s=S;const F={shear:['Adensando: a placa desce sob σ','Cisalhando: a placa anda para a direita','Ensaio completo'],col:['Assentando atrás da comporta','Comporta aberta: a coluna desmorona','Pilha em repouso'],int:['Acomodando o filme sob σ','Cisalhando a interface (ligações ativas)','Ensaio completo'],wall:['Grãos caindo sobre o agregado','Acomodando','Empacotamento em repouso']};$('fase').textContent=F[s.mode][s.ph]}
+
+// ================================================================ física
+function step(){
+ const s=S,N=s.N,{x,y,vx,vy,w,r,m,ty,fx,fy,tq}=s,dt=s.dt,p=s.p,cs=2*s.rmax,per=s.Lx!==null;
+ fx.fill(0);fy.fill(0);tq.fill(0);
+ let ymin=1e9,ymax=-1e9;for(let i=0;i<N;i++){if(y[i]<ymin)ymin=y[i];if(y[i]>ymax)ymax=y[i]}
+ const ncx=per?Math.max(3,Math.floor(s.Lx/cs)):Math.ceil(s.W/cs)+1,cwx=per?s.Lx/ncx:cs,ncy=Math.ceil((ymax-ymin)/cs)+1;
+ const head=new Int32Array(ncx*ncy).fill(-1),nxt=new Int32Array(N),cx=new Int32Array(N),cy=new Int32Array(N);
+ for(let i=0;i<N;i++){const X=per?((x[i]%s.Lx)+s.Lx)%s.Lx:x[i];const a=Math.min(ncx-1,Math.max(0,Math.floor(X/cwx))),b=Math.min(ncy-1,Math.floor((y[i]-ymin)/cs));cx[i]=a;cy[i]=b;nxt[i]=head[b*ncx+a];head[b*ncx+a]=i}
+ const nh=new Map(),C=[],KEY=N+5;
+ function contact(i,j,nxv,nyv,ov,rj,isWall){
+  const mj=isWall?Infinity:m[j],me=1/(1/m[i]+1/mj),tx=-nyv,tyv=nxv;
+  const vjx=isWall?0:vx[j],vjy=isWall?0:vy[j],wj=isWall?0:w[j],dvx=vx[i]-vjx,dvy=vy[i]-vjy;
+  const vn=dvx*nxv+dvy*nyv,vt=dvx*tx+dvy*tyv+w[i]*r[i]+wj*rj;
+  let Fn=KN*ov+2*ZETA*Math.sqrt(me*KN)*vn;if(Fn<0)Fn=0;
+  const k=i*KEY+j,h=s.hist.get(k)||[0,0];let xi=h[0]+vt*dt,Ft=-KT*xi;const lim=p.mu*Fn;
+  if(Math.abs(Ft)>lim){Ft=Math.sign(Ft)*lim;xi=-Ft/KT}
+  const Re=isWall?r[i]:r[i]*rj/(r[i]+rj),kr=KT*Re*Re;let th=h[1]+(w[i]-wj)*dt,M=-kr*th;const limr=p.mur*Re*Fn;
+  if(Math.abs(M)>limr){M=Math.sign(M)*limr;th=-M/kr}
+  nh.set(k,[xi,th]);
+  const Fx=-Fn*nxv+Ft*tx,Fy=-Fn*nyv+Ft*tyv;fx[i]+=Fx;fy[i]+=Fy;tq[i]+=r[i]*Ft+M;
+  if(!isWall){fx[j]-=Fx;fy[j]-=Fy;tq[j]+=rj*Ft-M;C.push(i,j,Fn)}
+ }
+ for(let i=0;i<N;i++){
+  for(let db=-1;db<=1;db++){const b=cy[i]+db;if(b<0||b>=ncy)continue;
+   for(let da=-1;da<=1;da++){let a=cx[i]+da;if(per)a=(a+ncx)%ncx;else if(a<0||a>=ncx)continue;
+    for(let j=head[b*ncx+a];j!==-1;j=nxt[j]){if(j<=i||(ty[i]&&ty[j]))continue;
+     let dx=x[j]-x[i];if(per)dx-=s.Lx*Math.round(dx/s.Lx);const dy=y[j]-y[i],d2=dx*dx+dy*dy,rs=r[i]+r[j];
+     if(d2<rs*rs&&d2>0){const d=Math.sqrt(d2);contact(i,j,dx/d,dy/d,rs-d,r[j],false)}}}}
+  if(!ty[i]){
+   if(!per){if(x[i]<r[i])contact(i,N+1,-1,0,r[i]-x[i],0,true);if(x[i]>s.W-r[i])contact(i,N+2,1,0,r[i]-(s.W-x[i]),0,true);
+    if(s.gate!==null&&x[i]>s.gate-r[i]&&x[i]<s.gate+1)contact(i,N+3,1,0,r[i]-(s.gate-x[i]),0,true)}
+   if((s.floor||!per)&&y[i]<r[i])contact(i,N,0,-1,r[i]-y[i],0,true)}
+ }
+ s.hist=nh;s.C=C;
+ // ligações adesivas (modelo bilinear de dano = zona coesiva em cada ligação)
+ if(s.B.length){const B=s.B;let k=0;
+  for(let q=0;q<B.length;q++){const b=B[q],i=b.i,j=b.j;
+   let dx=x[j]-x[i];if(per)dx-=s.Lx*Math.round(dx/s.Lx);const dy=y[j]-y[i],d=Math.hypot(dx,dy),nxv=dx/d,nyv=dy/d,tx=-nyv,tyv=nxv;
+   const un=d-b.d0,vt=(vx[i]-vx[j])*tx+(vy[i]-vy[j])*tyv+w[i]*r[i]+w[j]*r[j];b.us+=vt*dt;
+   const de=Math.hypot(Math.max(un,0),b.us);if(de>b.dm)b.dm=de;
+   const d0=b.F/KBN,df=SOFT*d0;let D=b.dm<=d0?0:Math.min(1,df*(b.dm-d0)/(b.dm*(df-d0)));
+   if(D>=1||b.F<=0){if(b.a)s.brokeA++;else s.brokeC++;continue}
+   b.D=D;const fn=KBN*un*(1-(un>0?D:0)),ft=-KBT*b.us*(1-D);
+   const Fx=fn*nxv+ft*tx,Fy=fn*nyv+ft*tyv;fx[i]+=Fx;fy[i]+=Fy;fx[j]-=Fx;fy[j]-=Fy;tq[i]+=r[i]*ft;tq[j]+=r[j]*ft;
+   B[k++]=b}
+  B.length=k}
+ let Fpx=0,Fpy=0,Mp=0,np=0;
+ for(let i=0;i<N;i++){if(ty[i]===2){Fpx+=fx[i];Fpy+=fy[i];Mp+=m[i];np++;continue}if(ty[i]===1)continue;
+  vx[i]+=fx[i]/m[i]*dt;vy[i]+=(fy[i]/m[i]-s.grav)*dt;w[i]+=tq[i]/s.I[i]*dt;x[i]+=vx[i]*dt;y[i]+=vy[i]*dt}
+ if(np){s.Fp=[Fpx,Fpy];const am=2*Math.sqrt(Mp*KN*np);s.vyp+=(Fpy-s.P-am*s.vyp)/Mp*dt;
+  for(let i=0;i<N;i++)if(ty[i]===2){vx[i]=s.V;vy[i]=s.vyp;w[i]=0;x[i]+=s.V*dt;y[i]+=s.vyp*dt}}
+ s.t+=dt;s.step++;
+}
+function meanY(t){let a=0,n=0;for(let i=0;i<S.N;i++)if(S.ty[i]===t&&S.side[i]!==3){a+=S.y[i];n++}return a/n}
+function ek(){const s=S;let e=0,n=0;for(let i=0;i<s.N;i++)if(!s.ty[i]){e+=.5*s.m[i]*(s.vx[i]**2+s.vy[i]**2)+.5*s.I[i]*s.w[i]**2;n++}return e/n}
+function makeBonds(){// liga todos os pares que se tocam (folga de 5%) entre filme–filme e filme–faces
+ const s=S,p=s.p,B=[];
+ for(let i=0;i<s.N;i++)for(let j=i+1;j<s.N;j++){if(s.side[i]===3||s.side[j]===3||(s.ty[i]&&s.ty[j]))continue;
+  let dx=s.x[j]-s.x[i];dx-=s.Lx*Math.round(dx/s.Lx);const dy=s.y[j]-s.y[i],d=Math.hypot(dx,dy);
+  if(d<(s.r[i]+s.r[j])*1.08){const a=!!(s.ty[i]||s.ty[j]);const F=a?p.adh*(1-.85*p.agua):p.coh*(1-.25*p.agua);
+   B.push({i,j,d0:d,us:0,dm:0,D:0,a,F})}}
+ s.B=B;s.nb0=B.length;s.nbA0=B.filter(b=>b.a).length}
+
+// ================================================================ controle de cada ensaio
+function control(){
+ const s=S;
+ if(s.mode==='shear'){
+  if(s.ph===0&&s.t>30){s.ph=1;s.H0=meanY(2)-meanY(1);s.V=s.p.I*Math.sqrt(Math.max(s.p.sig,.5))*s.H0;s.t0=s.t;s.x0.set(s.x);fase()}
+  if(s.ph===1&&s.step%40===0){const H=meanY(2)-meanY(1),gam=s.V*(s.t-s.t0)/H,ts=-s.Fp[0]/s.P;s.rec.push([gam,ts,H]);
+   const st=s.rec.filter(q=>q[0]>.5);if(st.length)s.res=st.reduce((a,q)=>a+q[1],0)/st.length;
+   if(gam>=GMAX){s.ph=2;fase();LOG.shear.push({mu:s.p.mu,mur:s.p.mur,sig:s.p.sig,I:s.p.I,ts:s.res});refresh()}}
+ }else if(s.mode==='col'){
+  if(s.ph===0&&s.t>15){s.gate=null;s.ph=1;fase()}
+  if(s.ph===1&&s.step%400===0&&s.t>30&&ek()<2e-4){s.ph=2;fase();LOG.col.push({mu:s.p.mu,mur:s.p.mur,ang:angle()});refresh()}
+ }else if(s.mode==='int'){
+  if(s.ph===0&&s.t>6){makeBonds();s.ph=1;s.V=.05;s.t0=s.t;s.x0.set(s.x);fase()}
+  if(s.ph===1&&s.step%30===0){const dx=s.V*(s.t-s.t0),tau=-s.Fp[0]/s.Lx;s.rec.push([dx,tau]);
+   if(dx>=DXMAX){s.ph=2;fase();const a=analyzeInt();LOG.int.push({...a,adh:s.p.adh,coh:s.p.coh,agua:s.p.agua,rug:s.p.rug,sig:s.p.sig,mu:s.p.mu});refresh()}}
+ }else{
+  if(s.ph===0&&s.t>8)s.ph=1,fase();
+  if(s.ph===1&&s.step%300===0&&s.t>14&&ek()<3e-5){s.ph=2;fase();const pr=profile();LOG.wall.push({faixa:s.p.faixa,finos:s.p.finos,mu:s.p.mu,...pr.sum});refresh()}
+ }
+}
+function smooth(R,k){const o=[];let a=0;R.forEach((q,i)=>{a=i?a*(1-k)+q[1]*k:q[1];o.push([q[0],a])});return o}
+function analyzeInt(){const R=S.rec;if(R.length<5)return{};const sm=smooth(R,.25);
+ let im=0;sm.forEach((q,i)=>{if(q[1]>sm[im][1])im=i});const tmax=sm[im][1],xpk=sm[im][0];
+ const fitPts=R.filter(q=>q[0]<=.08);let kt=null;if(fitPts.length>=2){const n=fitPts.length,sx=fitPts.reduce((a,q)=>a+q[0],0),sy=fitPts.reduce((a,q)=>a+q[1],0),sxx=fitPts.reduce((a,q)=>a+q[0]**2,0),sxy=fitPts.reduce((a,q)=>a+q[0]*q[1],0);kt=(n*sxy-sx*sy)/(n*sxx-sx*sx)}
+ const tail=R.filter(q=>q[0]>=.75*DXMAX);const tres=tail.length?tail.reduce((a,q)=>a+q[1],0)/tail.length:null;
+ let x3=null;if(tres!=null)for(let i=im;i<sm.length;i++)if(sm[i][1]<=tres+.15*(tmax-tres)){x3=sm[i][0];break}
+ const tb=S.brokeA+S.brokeC;return{tmax,xpk,kt,tres,x3,adesiva:tb?S.brokeA/tb:null,quebradas:S.nb0?tb/S.nb0:0}}
+function angle(){const s=S;const bins=new Map();let hmax=0;for(let i=0;i<s.N;i++)if(!s.ty[i]){const b=Math.floor(s.x[i]),h=s.y[i]+s.r[i];if(h>(bins.get(b)||0))bins.set(b,h);hmax=Math.max(hmax,h)}
+ const pts=[...bins].filter(([b,h])=>h>.15*hmax&&h<.85*hmax).map(([b,h])=>[b+.5,h]);if(pts.length<3)return null;
+ const n=pts.length,sx=pts.reduce((a,q)=>a+q[0],0),sy=pts.reduce((a,q)=>a+q[1],0),sxx=pts.reduce((a,q)=>a+q[0]*q[0],0),sxy=pts.reduce((a,q)=>a+q[0]*q[1],0);
+ return Math.atan(-(n*sxy-sx*sy)/(n*sxx-sx*sx))*180/Math.PI}
+function profile(){// porosidade por faixa horizontal: soma das cordas dos discos que cortam a linha y
+ const s=S,dy=.05;let top=1e9;const nb=Math.floor(s.Lx);const hb=new Array(nb).fill(0);
+ for(let i=0;i<s.N;i++){const b=Math.min(nb-1,Math.floor(((s.x[i]%s.Lx)+s.Lx)%s.Lx));hb[b]=Math.max(hb[b],s.y[i]+s.r[i])}
+ top=Math.min(...hb)-1.5;const ys=[],n=[];
+ for(let y=dy/2;y<top;y+=dy){let c=0;for(let i=0;i<s.N;i++){const h=y-s.y[i];if(Math.abs(h)<s.r[i])c+=2*Math.sqrt(s.r[i]**2-h*h)}ys.push(y);n.push(1-c/s.Lx)}
+ const mean=(a,b)=>{let t=0,k=0;ys.forEach((y,i)=>{if(y>=a&&y<b){t+=n[i];k++}});return k?t/k:NaN};
+ const bulk=mean(3,top),wall=mean(0,1),wall2=mean(1,2);
+ // espessura: distância a partir da qual a média móvel (janela 1 d) fica a menos de 10% do excesso
+ let esp=null;const ex=wall-bulk;for(let a=0;a<top-1;a+=.05){if(mean(a,a+1)-bulk<.1*ex){esp=a+.5;break}}
+ return{ys,n,top,sum:{wall,wall2,bulk,razao:wall/bulk,esp}}}
+
+// ================================================================ desenho
+const cv=$('cv'),ctx=cv.getContext('2d');
+const VIR=[[68,1,84],[59,82,139],[33,145,140],[94,201,98],[253,231,37]];
+function vir(t){t=Math.max(0,Math.min(1,t))*4;const i=Math.min(3,Math.floor(t)),f=t-i,a=VIR[i],b=VIR[i+1];return`rgb(${a.map((v,k)=>Math.round(v+(b[k]-v)*f))})`}
+const probe=document.createElement('i');probe.style.display='none';document.body.appendChild(probe);
+function css(v){probe.style.color=`var(${v})`;return getComputedStyle(probe).color}
+const isDark=()=>{const c=css('--bg').match(/\d+/g);return c&&(+c[0]+ +c[1]+ +c[2])<300};
+function draw(){
+ const s=S,Wc=cv.clientWidth||900,dpr=Math.min(2,devicePixelRatio||1);
+ const vw=s.Lx!==null?s.Lx:s.W,vh=s.H+(s.mode==='shear'?1:0),Hc=Math.round(Wc*vh/vw);
+ if(cv.width!==Math.round(Wc*dpr)||cv.height!==Math.round(Hc*dpr)){cv.width=Math.round(Wc*dpr);cv.height=Math.round(Hc*dpr)}
+ const k=cv.width/vw,ink=css('--ink'),rule=css('--rule'),dark=isDark(),off=s.mode==='shear'?.5:0;
+ ctx.clearRect(0,0,cv.width,cv.height);
+ const X=i=>{let v=s.x[i];if(s.Lx!==null)v=((v%s.Lx)+s.Lx)%s.Lx;return v*k},Y=i=>cv.height-(s.y[i]+off)*k;
+ const cm=$('cor').value,V=s.V||1;
+ if(s.mode==='wall'){ctx.fillStyle=dark?'#4a4540':'#8d867c';ctx.fillRect(0,cv.height-.02*k,cv.width,.02*k+2)}
+ for(let i=0;i<s.N;i++){
+  let c;
+  if(s.mode==='int'){c=s.ty[i]===1?(dark?'#5d6d7e':'#8fa3b5'):s.ty[i]===2?(dark?'#a0523d':'#d98c6f'):(dark?'#e6c36a':'#3b3226')}
+  else if(s.mode==='wall'){c=s.r[i]<.2?'#c8371e':vir(.15+.7*(s.r[i]-.25)/.6)}
+  else if(s.ty[i]===1)c=rule;else if(s.ty[i]===2)c='#c8371e';
+  else if(cm==='v')c=s.mode==='shear'?vir(s.vx[i]/V):vir(Math.hypot(s.vx[i],s.vy[i])/3);
+  else if(cm==='w')c=vir(.5+s.w[i]/(s.mode==='shear'?2*V:4));
+  else{const band=s.mode==='shear'?Math.floor(((s.x0[i]%s.Lx)+s.Lx)%s.Lx/3):Math.floor(s.y0[i]/4);c=band%2?'#2a6f97':'#e9c46a'}
+  ctx.fillStyle=c;const rr=s.r[i]*k*.97,xx=X(i),yy=Y(i);
+  ctx.beginPath();ctx.arc(xx,yy,rr,0,7);ctx.fill();
+  if(s.Lx!==null){if(xx<rr){ctx.beginPath();ctx.arc(xx+s.Lx*k,yy,rr,0,7);ctx.fill()}else if(xx>cv.width-rr){ctx.beginPath();ctx.arc(xx-s.Lx*k,yy,rr,0,7);ctx.fill()}}
+ }
+ if(s.mode==='int'&&$('fch').checked){ctx.lineCap='round';
+  for(const b of s.B){let x1=X(b.i),x2=X(b.j);if(Math.abs(x2-x1)>cv.width/2)continue;const D=b.D||0;
+   ctx.strokeStyle=D<.01?(b.a?'#2a9d8f':'#7a8b2a'):`rgba(200,55,30,${.5+.5*D})`;ctx.lineWidth=(D<.01?2.2:3)*dpr;ctx.beginPath();ctx.moveTo(x1,Y(b.i));ctx.lineTo(x2,Y(b.j));ctx.stroke()}}
+ else if(s.mode!=='wall'&&$('fch').checked&&s.C.length){let mean=0;const C=s.C,n=C.length/3;for(let q=2;q<C.length;q+=3)mean+=C[q];mean/=n;
+  ctx.strokeStyle=dark?'rgba(255,120,90,.9)':'rgba(150,20,0,.85)';ctx.lineCap='round';
+  for(let q=0;q<C.length;q+=3){const f=C[q+2];if(f<mean)continue;const i=C[q],j=C[q+1];const x1=X(i),x2=X(j);if(Math.abs(x2-x1)>cv.width/2)continue;
+   ctx.lineWidth=Math.min(6,f/mean*1.2)*dpr;ctx.beginPath();ctx.moveTo(x1,Y(i));ctx.lineTo(x2,Y(j));ctx.stroke()}}
+ if(s.mode==='wall'&&$('fch').checked){ctx.fillStyle='rgba(200,55,30,.12)';ctx.fillRect(0,cv.height-1*k,cv.width,1*k);ctx.font=`${13*dpr}px "Schibsted Grotesk",sans-serif`;const tl='faixa de 1 diâmetro médio junto ao agregado',tw=ctx.measureText(tl).width;ctx.fillStyle=css('--panel');ctx.fillRect(6*dpr,cv.height-1*k-24*dpr,tw+12*dpr,20*dpr);ctx.fillStyle=ink;ctx.fillText(tl,12*dpr,cv.height-1*k-9*dpr)}
+ if(s.mode==='col'&&s.gate!==null){ctx.fillStyle=ink;ctx.fillRect(s.gate*k,cv.height-31*k,3*dpr,30*k)}
+}
+
+// ================================================================ gráficos
+function axes(c,x0,x1,y0,y1,xl,yl,xt,yt){const d=Math.min(2,devicePixelRatio||1),W=c.clientWidth,H=c.clientHeight;c.width=W*d;c.height=H*d;const g=c.getContext('2d');g.scale(d,d);
+ const L=50,B=36,T=12,R=12,mute=css('--mute'),rule=css('--rule');g.font='13px "Schibsted Grotesk",sans-serif';g.fillStyle=mute;g.strokeStyle=rule;g.lineWidth=1;
+ const sx=v=>L+(v-x0)/(x1-x0)*(W-L-R),sy=v=>H-B-(v-y0)/(y1-y0)*(H-B-T);
+ const dec=a=>a.some(v=>Math.abs(v%1)>1e-9)?(a.some(v=>Math.abs((v*10)%1)>1e-9)?2:1):0,dx=dec(xt),dyd=dec(yt);
+ xt.forEach(v=>{g.beginPath();g.moveTo(sx(v),T);g.lineTo(sx(v),H-B);g.stroke();g.textAlign='center';g.fillText(nf(v,dx),sx(v),H-B+16)});
+ yt.forEach(v=>{g.beginPath();g.moveTo(L,sy(v));g.lineTo(W-R,sy(v));g.stroke();g.textAlign='right';g.fillText(nf(v,dyd),L-6,sy(v)+4)});
+ g.fillStyle=css('--ink');g.textAlign='center';g.fillText(xl,(L+W-R)/2,H-4);g.save();g.translate(12,(T+H-B)/2);g.rotate(-Math.PI/2);g.fillText(yl,0,0);g.restore();return{g,sx,sy,W,H,L,R,T,B}}
+const ticks=(m,n=5)=>{const st=[.1,.2,.25,.5,1,2,2.5,5,10,20,25,50,100].find(v=>m/v<=n)||100;const top=Math.ceil(m/st-1e-9)*st,o=[];for(let v=0;v<=top+1e-9;v+=st)o.push(+v.toFixed(3));return o};
+function line(g,pts,sx,sy,col,w,dash){g.strokeStyle=col;g.lineWidth=w;g.setLineDash(dash||[]);g.beginPath();pts.forEach((q,i)=>{const X=sx(q[0]),Y=sy(q[1]);i?g.lineTo(X,Y):g.moveTo(X,Y)});g.stroke();g.setLineDash([])}
+function chart1(){const s=S,c=$('ch1');
+ if(s.mode==='int'){const R=s.rec,ym=Math.max(5,...R.map(q=>q[1]))*1.15;const yt=ticks(ym);const A=axes(c,0,DXMAX,0,yt[yt.length-1],'deslocamento relativo Δx (diâmetros de grão)','τ (tensão cisalhante)',[0,.5,1,1.5,2,2.5,3],yt);
+  if(!R.length)return;const sm=smooth(R,.25);const a=s.ph===2?analyzeInt():null,g=A.g;
+  if(a&&a.xpk!=null){const z=[[0,a.xpk,'I'],[a.xpk,a.x3??DXMAX,'II'],[a.x3??DXMAX,DXMAX,'III']];const cols=['rgba(42,157,143,.10)','rgba(200,55,30,.10)','rgba(120,120,120,.10)'];
+   z.forEach(([u,v,l],i)=>{if(v<=u)return;g.fillStyle=cols[i];g.fillRect(A.sx(u),A.T,A.sx(v)-A.sx(u),A.H-A.B-A.T);g.fillStyle=css('--ink');g.font='600 14px "Schibsted Grotesk",sans-serif';g.textAlign='center';g.fillText('Zona '+l,(A.sx(u)+A.sx(v))/2,A.T+16)});
+   if(a.kt){line(g,[[0,0],[a.tmax/a.kt,a.tmax]],A.sx,A.sy,css('--mute'),1,[4,4])}
+   if(a.tres!=null)line(g,[[a.x3??a.xpk,a.tres],[DXMAX,a.tres]],A.sx,A.sy,css('--ink'),1,[5,4])}
+  line(g,R,A.sx,A.sy,'rgba(200,55,30,.25)',1);line(g,sm,A.sx,A.sy,'#c8371e',2);return}
+ if(s.mode==='wall'){const pr=profile(),dm=Math.min(8,pr.top);const A=axes(c,0,dm,0,.8,'distância à superfície do agregado (diâmetros)','porosidade',ticks(dm,8),[0,.2,.4,.6,.8]);
+  const g=A.g;g.fillStyle='rgba(200,55,30,.10)';g.fillRect(A.sx(0),A.T,A.sx(1)-A.sx(0),A.H-A.B-A.T);
+  const pts=pr.ys.map((y,i)=>[y,pr.n[i]]).filter(q=>q[0]<=dm);line(g,pts,A.sx,A.sy,'rgba(42,111,151,.35)',1);
+  const sm=[];pts.forEach((q,i)=>{const a=pts.slice(Math.max(0,i-10),i+11);sm.push([q[0],a.reduce((t,u)=>t+u[1],0)/a.length])});line(g,sm,A.sx,A.sy,'#2a6f97',2.2);
+  if(isFinite(pr.sum.bulk))line(g,[[0,pr.sum.bulk],[dm,pr.sum.bulk]],A.sx,A.sy,css('--ink'),1,[5,4]);
+  g.fillStyle=css('--ink');g.textAlign='left';g.font='13px "Schibsted Grotesk",sans-serif';g.fillText('média no interior',A.sx(dm*.62),A.sy(pr.sum.bulk)-6);return}
+ if(s.mode==='shear'){const A=axes(c,0,GMAX,0,.6,'deformação cisalhante γ','τ / σ',[0,.5,1,1.5,2],[0,.2,.4,.6]);const R=s.rec;if(!R.length)return;
+  line(A.g,smooth(R,.15),A.sx,A.sy,'#c8371e',1.6);if(s.res!=null)line(A.g,[[.5,s.res],[GMAX,s.res]],A.sx,A.sy,css('--ink'),1,[5,4]);return}
+ const A=axes(c,0,1,0,1,'','',[],[]);A.g.fillStyle=css('--mute');A.g.textAlign='center';A.g.fillText('Ângulo do talude no painel de leitura',c.clientWidth/2,c.clientHeight/2)}
+function fit(pts){const n=pts.length;if(n<2)return null;const sx=pts.reduce((a,q)=>a+q[0],0),sy=pts.reduce((a,q)=>a+q[1],0),sxx=pts.reduce((a,q)=>a+q[0]**2,0),sxy=pts.reduce((a,q)=>a+q[0]*q[1],0),den=n*sxx-sx*sx;if(Math.abs(den)<1e-9)return null;const b=(n*sxy-sx*sy)/den;return{a:(sy-b*sx)/n,b}}
+function chart2(){const c=$('ch2');
+ if(mode==='int'){const L=LOG.int.filter(q=>q.tmax!=null),ym=Math.max(10,...L.map(q=>q.tmax))*1.15,yt=ticks(ym),xm=Math.max(20,...L.map(q=>q.sig));
+  const A=axes(c,0,xm,0,yt[yt.length-1],'tensão normal σ','τ',ticks(xm),yt),g=A.g;
+  const f1=fit(L.map(q=>[q.sig,q.tmax])),f2=fit(L.filter(q=>q.tres!=null).map(q=>[q.sig,q.tres]));
+  if(f1)line(g,[[0,f1.a],[xm,f1.a+f1.b*xm]],A.sx,A.sy,'#c8371e',1.2,[5,4]);if(f2)line(g,[[0,f2.a],[xm,f2.a+f2.b*xm]],A.sx,A.sy,css('--mute'),1.2,[5,4]);
+  L.forEach(q=>{g.fillStyle='#c8371e';g.beginPath();g.arc(A.sx(q.sig),A.sy(q.tmax),5,0,7);g.fill();if(q.tres!=null){g.strokeStyle=css('--mute');g.lineWidth=1.6;g.beginPath();g.arc(A.sx(q.sig),A.sy(q.tres),5,0,7);g.stroke()}});
+  g.textAlign='left';g.font='13px "Schibsted Grotesk",sans-serif';g.fillStyle=css('--ink');
+  const lab=(f,t)=>f?`${t}: c = ${nf(f.a,1)}, φ = ${nf(Math.atan(Math.max(f.b,0))*180/Math.PI,1)}°`:`${t}: rode ensaios com σ diferentes`;
+  g.fillText('● '+lab(f1,'pico'),A.L+8,A.T+14);g.fillText('○ '+lab(f2,'residual'),A.L+8,A.T+32);return}
+ if(mode==='wall'){const L=LOG.wall;const A=axes(c,0,25,0,.6,'finos (% da área de sólidos)','porosidade',[0,5,10,15,20,25],[0,.2,.4,.6]),g=A.g;
+  L.forEach(q=>{g.fillStyle='#c8371e';g.beginPath();g.arc(A.sx(q.finos*100),A.sy(q.wall),5,0,7);g.fill();g.strokeStyle='#2a6f97';g.lineWidth=1.6;g.beginPath();g.arc(A.sx(q.finos*100),A.sy(q.bulk),5,0,7);g.stroke()});
+  g.textAlign='left';g.fillStyle=css('--ink');g.fillText('● junto ao agregado (0–1 d)   ○ interior',A.L+8,A.T+14);return}
+ if(mode==='shear'){const A=axes(c,0,1,0,45,'μ — atrito entre grãos','φ do solo (graus)',[0,.2,.4,.6,.8,1],[0,15,30,45]),g=A.g;
+  line(g,Array.from({length:51},(_,i)=>[i/50,Math.atan(i/50)*180/Math.PI]),A.sx,A.sy,css('--mute'),1,[5,4]);
+  const col=mr=>mr<.05?'#2a6f97':mr<.2?'#e09f3e':'#3a7d44';
+  REF.forEach(([mu,mr,ts])=>{g.strokeStyle=col(mr);g.lineWidth=1.5;g.beginPath();g.arc(A.sx(mu),A.sy(Math.atan(ts)*180/Math.PI),4.5,0,7);g.stroke()});
+  LOG.shear.forEach(q=>{g.fillStyle=col(q.mur);g.beginPath();g.arc(A.sx(q.mu),A.sy(Math.atan(q.ts)*180/Math.PI),5.5,0,7);g.fill()});
+  g.textAlign='left';[['μr = 0','#2a6f97'],['μr ≈ 0,1','#e09f3e'],['μr ≥ 0,3','#3a7d44']].forEach(([t,c2],i)=>{g.fillStyle=c2;g.fillRect(A.L+8,A.T+4+i*18,10,10);g.fillStyle=css('--ink');g.fillText(t,A.L+24,A.T+13+i*18)});return}
+ const L=LOG.col,A=axes(c,0,.6,0,30,'μr — resistência ao rolamento','ângulo do talude (graus)',[0,.2,.4,.6],[0,10,20,30]),g=A.g;
+ L.forEach(q=>{if(q.ang==null)return;g.fillStyle='#c8371e';g.beginPath();g.arc(A.sx(q.mur),A.sy(q.ang),5,0,7);g.fill()})}
+
+// ================================================================ textos, mostradores e diário de cada modo
+const TXT={
+ int:{t:'Interface entre camadas',c1:'Curva τ × Δx (como a Figura 1.18)',n1:'Zona I: ligações elásticas, τ = kₜ·Δx (tracejado: kₜ). Zona II: as ligações acumulam dano e rompem. Zona III: resta o atrito entre as faces e os grãos soltos (tracejado: τ residual).',
+  c2:'Envoltória da interface: τ × σ',n2:'Rode ensaios com σ diferentes: a reta dos picos dá a adesão aparente c e o ângulo de atrito da interface; a dos residuais, só atrito.',
+  cols:['#','adesão','coesão','água','rugos.','σ','kₜ','τ máx','Δx pico','τ resid.','rupt. adesiva'],
+  row:q=>[nf(q.adh,0),nf(q.coh,0),nf(q.agua*100,0)+'%',nf(q.rug,1),nf(q.sig,0),q.kt!=null?nf(q.kt,1):'—',nf(q.tmax,2),nf(q.xpk,2),q.tres!=null?nf(q.tres,2):'—',q.adesiva!=null?nf(q.adesiva*100,0)+'%':'—'],
+  dials:['τ máx (pico)','kₜ — módulo de reação','τ residual','ruptura adesiva'],
+  txt:`<div class="panel"><h2>O que é simulado</h2><p>Duas camadas rígidas com faces ásperas (as camadas do pavimento) e, entre elas, um filme de grãos (a pintura de ligação com finos). Antes de cisalhar, cada par de grãos que se toca ganha uma <b>ligação</b>: verde-azulada entre filme e face (<b>adesão</b>), verde-oliva dentro do filme (<b>coesão</b>). A cor muda para vermelho conforme a ligação acumula dano.</p></div>
+  <div class="panel"><h2>A ligação é uma zona coesiva em miniatura</h2><p>Cada ligação segue uma lei bilinear: cresce elástica até a sua resistência e depois perde força até romper com 12 vezes o deslocamento do pico. Somando centenas delas, aparece a curva da <b>Lei de Goodman</b> com as três zonas, sem que ela seja imposta.</p></div>
+  <div class="panel"><h2>Experimentos</h2><p><b>Água</b>: suba para 60% e veja a ruptura passar a ser adesiva (na face) e o pico cair. <b>Rugosidade</b>: com faces lisas (0) o residual quase some; com 1,0 o intertravamento mantém τ alto na Zona III. <b>σ</b>: repita com 5, 10 e 20 para traçar a envoltória.</p></div>`},
+ wall:{t:'Efeito parede (ZTI)',c1:'Porosidade × distância ao agregado',n1:'Faixa vermelha: até 1 diâmetro médio de grão a partir da superfície. Tracejado: porosidade média no interior da pasta.',
+  c2:'Finos × porosidade junto ao agregado',n2:'Cada ensaio completo entra aqui. Compare sem finos e com 10–20% de finos.',
+  cols:['#','faixa','finos','μ','n parede (0–1 d)','n interior','razão','espessura'],
+  row:q=>[nf(q.faixa,1),nf(q.finos*100,0)+'%',nf(q.mu,2),nf(q.wall,3),nf(q.bulk,3),nf(q.razao,2)+'×',q.esp!=null?nf(q.esp,2)+' d':'—'],
+  dials:['porosidade junto ao agregado','porosidade no interior','razão parede / interior','espessura da zona'],
+  txt:`<div class="panel"><h2>O que é simulado</h2><p>Grãos (o cimento anidro) caem e se acomodam sobre a superfície plana de um agregado graúdo. Nenhuma química, nenhuma água: só geometria e contato.</p></div>
+  <div class="panel"><h2>O que observar</h2><p>Junto à superfície os grãos não conseguem se encaixar como no interior: sobra mais vazio na primeira camada. É o <b>efeito parede</b>, uma das origens da ZTI. A zona mais porosa tem cerca de <b>um diâmetro de grão</b>; com grãos de cimento de 10–50 µm, isso dá a ordem de grandeza da ZTI de 10–50 µm.</p></div>
+  <div class="panel"><h2>Experimentos</h2><p><b>Finos</b>: com 10–20% de grãos pequenos (como a sílica ativa) eles entram nos vazios junto ao agregado e a porosidade da parede cai. <b>Faixa de tamanhos</b>: grãos iguais (1,0) formam camadas ordenadas e oscilações fortes no perfil; grãos variados suavizam o perfil.</p></div>`},
+ shear:{t:'Cisalhamento de um solo granular',c1:'τ/σ durante o cisalhamento',n1:'Tracejado: média no regime estável (γ > 0,5) → tan φ.',c2:'φ do solo × μ entre grãos',n2:'Círculos cheios: seus ensaios. Vazados: série de referência do caderno do Colab. Tracejado: φ = arctan(μ).',
+  cols:['#','μ','μr','σ','I','τ/σ','φ','arctan μ'],row:q=>[nf(q.mu,2),nf(q.mur,2),nf(q.sig,0),nf(q.I,3),nf(q.ts,3),nf(Math.atan(q.ts)*180/Math.PI,1)+'°',nf(Math.atan(q.mu)*180/Math.PI,1)+'°'],
+  dials:['φ do solo (média)','τ / σ agora','deformação γ','arctan(μ) do contato'],
+  txt:`<div class="panel"><h2>O que observar</h2><p><b>φ ≠ arctan(μ).</b> Com μ = 0,5 o contato daria 26,6°, mas o conjunto de discos fica perto de 13°: os grãos <b>rolam</b> em vez de deslizar. Aumente μ<sub>r</sub> para 0,3: φ sobe, como acontece com grãos angulosos.</p></div>
+  <div class="panel"><h2>Cadeias de força</h2><p>As linhas vermelhas ligam grãos cujo contato carrega mais força que a média: a carga passa por colunas inclinadas de grãos que se formam e se quebram durante o cisalhamento.</p></div>`},
+ col:{t:'Coluna que desmorona',c1:'—',n1:'',c2:'Ângulo do talude × μr',n2:'Cada pilha em repouso entra aqui.',cols:['#','μ','μr','ângulo'],row:q=>[nf(q.mu,2),nf(q.mur,2),q.ang!=null?nf(q.ang,1)+'°':'—'],
+  dials:['ângulo do talude','—','tempo','arctan(μ) do contato'],
+  txt:`<div class="panel"><h2>O que observar</h2><p>Compare μ<sub>r</sub> = 0 e 0,3: sem resistência ao rolamento os discos rolam para longe e a pilha fica quase plana; com o rolamento travado ela para num talude.</p></div>`}};
+function setDials(){const T=TXT[mode];['l1','l2','l3','l4'].forEach((id,i)=>$(id).textContent=T.dials[i]);['d1','d2','d3','d4'].forEach(id=>$(id).textContent='—');
+ if(mode==='shear'||mode==='col')$('d4').textContent=nf(Math.atan(+$('mu').value)*180/Math.PI,1)+'°'}
+function refresh(){const T=TXT[mode];$('ptit').textContent=T.t;$('c1t').textContent=T.c1;$('c1n').textContent=T.n1;$('c2t').textContent=T.c2;$('c2n').textContent=T.n2;$('txt').innerHTML=T.txt;
+ $('loghead').innerHTML='<tr>'+T.cols.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr>';
+ const L=LOG[mode];$('log').innerHTML=L.length?L.map((q,i)=>'<tr><td>'+(i+1)+'</td>'+T.row(q).map(v=>`<td>${esc(v)}</td>`).join('')+'</tr>').join(''):`<tr><td colspan="${T.cols.length}" style="text-align:left">Cada ensaio completo entra aqui.</td></tr>`;
+ $('lfch').textContent=mode==='int'?'Mostrar ligações adesivas':mode==='wall'?'Marcar a faixa de 1 diâmetro':'Mostrar cadeias de força';
+ document.querySelectorAll('[data-for]').forEach(e=>e.hidden=!e.dataset.for.split(' ').includes(mode));
+ chart1();chart2()}
+function outputs(){$('omu').textContent=nf(+$('mu').value,2);$('omur').textContent=nf(+$('mur').value,2);$('osig').textContent=$('sig').value;$('oadh').textContent=$('adh').value;$('ocoh').textContent=$('coh').value;$('oagua').textContent=$('agua').value+'%';$('orug').textContent=nf(+$('rug').value,1);$('ofaixa').textContent=nf(+$('faixa').value,1);$('ofinos').textContent=$('finos').value+'%'}
+
+// ================================================================ laço
+let frame=0;
+function loop(){if(running&&S&&S.ph<2){const n=+$('spd').value;for(let i=0;i<n;i++){step();control();if(S.ph===2)break}}
+ if(S){draw();frame++;const s=S;
+  if(s.mode==='shear'){const R=s.rec;if(R.length){$('d3').textContent=nf(R[R.length-1][0],2);$('d2').textContent=nf(R.slice(-8).reduce((a,q)=>a+q[1],0)/Math.min(8,R.length),3)}
+   $('d1').textContent=s.res!=null?nf(Math.atan(s.res)*180/Math.PI,1)+'°':'—';if(frame%6===0)chart1()}
+  else if(s.mode==='col'){$('d3').textContent=nf(s.t,0);if(s.ph>=1&&frame%20===0){const a=angle();$('d1').textContent=a!=null?nf(a,1)+'°':'—'}}
+  else if(s.mode==='int'){if(s.rec.length&&frame%6===0){const a=analyzeInt();$('d1').textContent=a.tmax!=null?nf(a.tmax,2):'—';$('d2').textContent=a.kt!=null?nf(a.kt,1):'—';
+    $('d3').textContent=s.ph===2&&a.tres!=null?nf(a.tres,2):'—';$('d4').textContent=a.adesiva!=null?nf(a.adesiva*100,0)+'%':'—';chart1()}}
+  else if(frame%15===0||s.ph===2&&frame%60===0){const pr=profile().sum;$('d1').textContent=nf(pr.wall,3);$('d2').textContent=nf(pr.bulk,3);$('d3').textContent=nf(pr.razao,2)+'×';$('d4').textContent=pr.esp!=null?nf(pr.esp,2)+' d':'—';chart1()}}
+ requestAnimationFrame(loop)}
+function restart(){build();refresh();running=true;$('play').textContent='Pausar'}
+['mu','mur','sig','iin','adh','coh','agua','rug','faixa','finos'].forEach(id=>$(id).addEventListener('input',()=>{outputs();restart()}));
+$('spd').addEventListener('input',()=>$('ospd').textContent=$('spd').value);
+$('cor').addEventListener('input',()=>draw());$('fch').addEventListener('input',()=>draw());
+$('play').onclick=()=>{if(S&&S.ph===2){restart();return}running=!running;$('play').textContent=running?'Pausar':'Continuar'};
+$('reset').onclick=restart;
+document.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>{mode=b.dataset.m;document.querySelectorAll('.modes button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+ if(mode==='shear'||mode==='col'){$('cor').value=mode==='shear'?'v':'f'}if(mode==='int'){$('mu').value=.5;}outputs();restart()});
+new ResizeObserver(()=>{if(S){chart1();chart2()}}).observe($('ch2'));
+window.__dem={get S(){return S},step,control,build,analyzeInt,profile,setMode:m=>{mode=m;document.querySelectorAll('.modes button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.m===m))},LOG,P,refresh,draw,stop:()=>{running=false}};
+outputs();restart();requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
